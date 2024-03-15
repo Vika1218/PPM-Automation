@@ -7,43 +7,124 @@ import pingouin as pg
 
 # Import customized packages
 from data_processing_module import connect_to_database, fetch_data_from_database, process_orders, process_detail_views, process_us_cost, rev_per_dv_model, cr_model, rev_per_dv_anova, cr_anova
+from output_format_module import number_format, rename_column, output_format
 
 # Streamlit app
 def main():
     
-    st.title("Product Feature MVP Automation_test")
+    st.set_page_config(layout="wide")
 
-    # User input fields
-    metric_analysed = st.selectbox("Select Metric to Analyze", ["Rev per DV", "CR"], index=0)
-    region_analysed = st.selectbox("Select Region to Analyze", ["US West", "US East", "US Southeast", "US Northwest"], index=0)
-    region_baseline = st.selectbox("Select Baseline Region", ["US All", "US West", "US East", "US Southeast", "US Northwest"], index=0)
-    feature = st.selectbox("Select Feature Dimension", ["market_sku", "market_spu", "category", "subcategory", "collection", "color_tone", "material_helper"], index=0)
-    rank = st.radio("Select Rank", ["Top", "Bottom"], index=0)
-    output_limit = st.slider("Select Output Limit", min_value=1, max_value=100, value=30)
-    
-    # Threshold for us_total_costs
-    metric_control_1 = 'us_total_cost'
-    metric_threshold_1 = st.number_input("Enter Threshold for US Total Cost >=", value=300.00, step=0.01,key="us_total_cost_threshold")
+    st.title("Product Feature MVP Automation - US")
 
-    # Metric analyzed threshold based on the user's selection
-    if metric_analysed == 'Rev per DV':
-        metric_control_2 = 'rev_per_dv_analysed'
-        metric_threshold_2 = st.number_input(f"Enter Threshold for {metric_analysed}_analysed >=", value=0.00, step=0.01, key="metric_analyzed_threshold")
-    elif metric_analysed == 'CR':
-        metric_control_2 = 'CR_analysed'
-        metric_threshold_2 = st.number_input(f"Enter Threshold for {metric_analysed}_analysed >=(%)    E.g.,For CR >= 0.08% -> Input number 0.08", value=0.00, step=0.01, format="%f", key="metric_analyzed_threshold")/ 100.0
-    
-    # Threshold for total_order
-    metric_control_3 = 'total_order'
-    metric_threshold_3 = st.number_input("Enter Threshold for Total Order >=", value=10, step=1, key="total_order_threshold")
+    st.markdown('''### Step 1: Define the Overall Analysis Scope''')
+    st.write(''':question: Solve the problem: Comapred to *Baseline Region*, what kinds of *Feature Dimension* is more/less performed in *Region to Analyse* in terms of *Metric to Analyze* from *Start Date* to *End Date*''')
+    st.write(''':question: Define the output: Ordered by performance (*Rank*), how many outputs (*Output Limit*) I want to see?''')
 
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        metric_analysed = st.selectbox("Select Metric to Analyze", ["Rev per DV", "CR"], 
+                                       help = '''Metric you need to analyse  \n -> Rev per DV: Revenue/Detailviews in the analysed region (= Total Revenue/Total Detailviews)  \n -> CR: Conversion rate in the analysed region (= Total Order/Total Detailviews)''',
+                                       index=0)
+    with col2:
+        region_analysed = st.selectbox("Select Region to Analyze", ["US West", "US East", "US Southeast", "US Northwest"], 
+                                       help = '''Region you need to analyse''',
+                                       index=0)
+    with col3:
+        region_baseline = st.selectbox("Select Baseline Region", ["US All", "US West", "US East", "US Southeast", "US Northwest"], 
+                                       help = '''Region as the baseline in the comparison process  \n -> US All means comparing your analysed region to the overall US market'''
+                                       ,index=0)
+    with col4:
+        feature = st.selectbox("Select Feature Dimension", ["market_sku", "market_spu", "category", "subcategory", "collection", "color_tone", "material_helper"], 
+                               help = '''Product feature you need to analyse''',
+                               index=0)
+        
     # Date range
-    start_date = st.date_input("Select Start Date", value=pd.to_datetime("2023-10-01"))
-    end_date = st.date_input("Select End Date", value=pd.to_datetime("2023-12-31"))
-    params = {'start_date': start_date, 'end_date': end_date}
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        start_date = st.date_input("Select Start Date", help = '''State the start date for your analysis''')
+    with col6:
+        end_date = st.date_input("Select End Date", help = '''State the end date for your analysis''')
+    if end_date < start_date:
+        st.error("End date must be later than start date. Please select a valid end date.")
+    else:
+        params = {'start_date': start_date, 'end_date': end_date}
+    with col7:
+        rank = st.radio("Select Rank", ["Top", "Bottom"], 
+                        help = '''Rank the output of model  \n -> Select 'Top' to find products with better performance in analysed region  \n -> Select 'Bottom' to find products with worse performance in analysed region''',
+                        index=0)
+    with col8:
+        output_limit = st.slider("Select Output Limit", min_value=1, max_value=100, value=30,
+                                 help = '''Select the number of records to display in the output.  \n -> Keep in mind that the final output may contain fewer records depending on the threshold and date range you set''')
+    
+    st.divider()
+
+    st.markdown('''### Step 2: Set Thresholds for Control Metrics''')
+    st.write(''':exclamation: To ensure a robust analysis, set minimum thresholds for various control metrics to filter products based on their data size and performance''')
+
+    col9,col10, col11, col12 = st.columns(4)
+    with col9:
+        metric_control_1 = 'us_total_cost'
+        metric_threshold_1 = st.number_input("Threshold for US Total Cost >=", min_value = 0.00, value=300.00, step=0.01,
+                                             help = '''Set the minimum total cost for products in the US market  \n -> E.G., if analyzing by category, this threshold represents the total costs spent on the category at US country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month  \n -> Less granular features typically require higher cost threshold
+                                             ''',
+                                             key="us_total_cost_threshold")
+    with col10:
+        if metric_analysed == 'Rev per DV':
+            metric_control_2 = 'rev_per_dv_analysed'
+            metric_threshold_2 = st.number_input(f"Threshold for {metric_analysed}_Analysed >=", min_value = 0.00, value=0.00, step=0.01, 
+                                                 help = '''Set the minimum Rev per DV for products in the analysed region  \n -> Example reference: Rev per DV >= 2.00''',
+                                                 key="metric_analyzed_threshold")
+        elif metric_analysed == 'CR':
+            metric_control_2 = 'CR_analysed'
+            metric_threshold_2 = st.number_input(f"Threshold for {metric_analysed}_Analysed >=(%)", min_value = 0.00, value=0.00, step=0.01, 
+                                                 help = '''Set the minimum CR for products in the analysed region  \n -> The format is already in percentage ->  \n -> Example reference: CR >= 0.08% --> Enter 0.08 here''', 
+                                                 key="metric_analyzed_threshold")/ 100.0
+    with col11:
+        metric_control_3 = 'total_order'
+        metric_threshold_3 = st.number_input("Threshold for Total Order >=", min_value = 0, value=10, step=1, 
+                                             help = '''Set the minimum orders for products in the analysed region  \n -> Example reference: Total Order >= 10''',
+                                             key="total_order_threshold")
+    with col12:
+        metric_control_4 = 'average_price_analysed'
+        metric_threshold_4 = st.number_input("Threshold for Average Price >=", min_value = 0, value=100, step=1, 
+                                             help = '''Set the minimum orders for products in the analysed region  \n -> Average Price = Total Revenue/Total Quantity  \n -> Example reference: Total Order >= 100''',
+                                             key="average_price_analysed_threshold")
+
+    st.divider()
+
+    st.markdown('''### Step 3: Further Specify the Analysis Scope (If Necessary)''')
+    st.write(''':exclamation: Further filter products when you need to deepdive into specific category/subcategory/collection etc.''')
+    st.write(''':exclamation: Leave the multi-select boxes below blank to choose all options, and refer to the sidebar for details on selected options''')
+    st.write(''':exclamation: Be cautious not to overly restrict the analysis scope, as it may result in zero output from the model''')
+    
+    # Multi-select function
+    def multiselect_customized(df,filter_name):
+        option = st.multiselect(f"Select {filter_name.capitalize()} to Analyze",df[filter_name].unique(),
+                                placeholder="Choose one ore more options; Leaving blanck here for choosing all options",
+                                help = f'''Select to see the output only within one or multiple {filter_name} option(s)  \n -> Leaving the box blank to select all options  \n -> See the sidebar for the details of selected options''')
+        if not option:
+            option = df[filter_name].unique()
+        st.sidebar.write(f"Selected {filter_name}:")
+        st.sidebar.dataframe(option,width=300, height=120)
+        return option
+
+    # Multi-select section
+    df_cateoption = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'category_subcategory')
+    df_collection = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'collection')
+    st.sidebar.subheader('''Selected Options in Step 3''')
+    category_option = multiselect_customized(df_cateoption,"category")
+    subcategory_option = multiselect_customized(df_cateoption,"subcategory")
+    collection_option = multiselect_customized(df_collection,"collection")
+    
+    if feature == 'color_tone':
+        df_color_tone = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name='color_tone')
+        color_tone_option = multiselect_customized(df_color_tone,"color_tone")
+    elif feature == 'material_helper':
+        df_material_helper = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name='material_helper')
+        material_helper_option = multiselect_customized(df_material_helper,"material_helper")                                                   
 
     # Trigger data processing on user input
-    if st.button("Process Data"):
+    if st.button("Process Data",help = '''Press botton to proceed the analysis'''):
        # change the according info to connect to the database
        host = 'dw-prod.cfujfnms1rth.ap-southeast-1.redshift.amazonaws.com'
        database = 'dwd_prod'
@@ -86,7 +167,6 @@ def main():
                       AND fs2.order_type = 'Goods'
                       AND fs2.pure_swatch_order_flag = 'N'
                       AND ds.category != 'Swatch'
-                      AND ds.category != 'Furniture Sets'
                       AND ds.category IS NOT NULL
                       AND ds.subcategory != 'Accident Protection Plan'
                       and DATE(fs2.payment_completion_time) BETWEEN %s AND %s
@@ -128,7 +208,6 @@ def main():
                       WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
                       where fpam.date between %s AND %s
                       and fpam.market = 'US'
-                      and ds.category != 'Furniture Sets'
                       group by 1,2,3,4,5,6,7,8,9,10
                       """
        
@@ -140,35 +219,65 @@ def main():
        conn.close()
        df_merge = pd.merge(df_order, df_dv[['unique_id', 'total_detailview']], on='unique_id', how='left')
        df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
+
+       # Calculate order percent
+       df_merge['order_percent_of_total'] = df_merge['total_order'] / df_merge['total_order'].sum()
+       df_merge['order_percent_of_category'] = df_merge.groupby('category')['total_order'].transform(lambda x: x / x.sum())
+
+       # Filter out required data
+       if feature == 'color_tone':
+           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option)) &
+                                (df_merge['color_tone'].isin(color_tone_option))]
+       elif feature == 'material_helper':
+           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option)) &
+                                (df_merge['material_helper'].isin(material_helper_option))]
+       else:
+           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option))]
         
        if metric_analysed == 'Rev per DV':
             
             # Call comparison model & ANOVA
             output_rev_per_dv = rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
-                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3)
+                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
+                            metric_control_4, metric_threshold_4)
             anova_each_rev_per_dv = rev_per_dv_anova(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature)
             # Get final output
             output_rev_per_dv = pd.merge(output_rev_per_dv, anova_each_rev_per_dv[['cate-feature', 'p_value']], on='cate-feature', how = 'left')
+            output_rev_per_dv = output_format(output_rev_per_dv, feature)
             st.table(output_rev_per_dv)
 
             # Allow users to download the data as CSV
             csv_data = output_rev_per_dv.to_csv(index=False)
-            st.download_button(label="Download Data as CSV", data=csv_data, file_name="output_rev_per_dv.csv", key="download_data")
+            st.download_button(label="Download Data as CSV", data=csv_data, 
+                               file_name=f"{region_analysed} vs. {region_baseline}_{feature}_Rev per DV_{start_date} to {end_date}.csv",
+                               help = '''Press botton to download output as csv file''',
+                               key="download_data")
         
        elif metric_analysed == 'CR':
             
             # Call comparison model & ANOVA
             output_cr = cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
-                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3)
+                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
+                            metric_control_4, metric_threshold_4)
             anova_each_cr = cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature)
             
             # Get final output
             output_cr = pd.merge(output_cr, anova_each_cr[['cate-feature', 'p_value']], on='cate-feature', how = 'left')
+            output_cr = output_format(output_cr, feature)
             st.table(output_cr)
 
             # Allow users to download the data as CSV
             csv_data = output_cr.to_csv(index=False)
-            st.download_button(label="Download Data as CSV", data=csv_data, file_name="output_cr.csv", key="download_data")
+            st.download_button(label="Download Data as CSV", data=csv_data, 
+                               file_name=f"{region_analysed} vs. {region_baseline}_{feature}_CR_{start_date} to {end_date}.csv", 
+                               help = '''Press botton to download output as csv file''',
+                               key="download_data")
 
 
 if __name__ == "__main__":
