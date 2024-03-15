@@ -62,3 +62,4 @@ validators==0.22.0
 watchdog==4.0.0
 xarray==2024.2.0
 zipp==3.17.0
+openpyxl==3.0.7
