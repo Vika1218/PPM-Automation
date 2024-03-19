@@ -1,5 +1,11 @@
 # change path as needed
 cd "C:\Users\Yunyi Cheng\OneDrive - Castlery Pte Ltd\06. Analytics\3. Analysis\2. Marketing Folder\Creative Ads & Insights\Product Feature Preference Model\Automation Test"
 
-
 streamlit run Automation_Test.py
+
+# Create virtual environment & free the environment for replication
+python -m venv venv
+.\venv\Scripts\activate
+cd "C:\Users\Yunyi Cheng\OneDrive - Castlery Pte Ltd\06. Analytics\3. Analysis\2. Marketing Folder\Creative Ads & Insights\Product Feature Preference Model\Automation Test"
+pip install -r requirements.txt
+pip freeze > requirements.txt
