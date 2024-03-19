@@ -4,6 +4,7 @@ import psycopg2
 import pandas as pd
 import numpy as np
 import pingouin as pg
+import openpyxl
 
 # Import customized packages
 from data_processing_module import connect_to_database, fetch_data_from_database, process_orders, process_detail_views, process_us_cost, rev_per_dv_model, cr_model, rev_per_dv_anova, cr_anova
