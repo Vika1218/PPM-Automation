@@ -77,7 +77,7 @@ def main():
         elif metric_analysed == 'CR':
             metric_control_2 = 'CR_analysed'
             metric_threshold_2 = st.number_input(f"Threshold for {metric_analysed}_Analysed >=(%)", min_value = 0.00, value=0.00, step=0.01, 
-                                                 help = '''Set the minimum CR for products in the analysed region  \n -> The format is already in percentage ->  \n -> Example reference: CR >= 0.08% --> Enter 0.08 here''', 
+                                                 help = '''Set the minimum CR for products in the analysed region  \n -> The format is already in percentage  \n -> Example reference: CR >= 0.08% --> Enter 0.08 here''', 
                                                  key="metric_analyzed_threshold")/ 100.0
     with col11:
         metric_control_3 = 'total_order'
