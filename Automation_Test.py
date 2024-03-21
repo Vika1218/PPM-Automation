@@ -122,7 +122,7 @@ def main():
         material_helper_option = multiselect_customized(df_material_helper,"material_helper")                                                   
 
     # Trigger data processing on user input
-    if st.button("Process Data",help = '''Press botton to proceed the analysis'''):
+    if st.button("Process Data",help = '''Press button to proceed the analysis'''):
        # change the according info to connect to the database
        host = 'dw-prod.cfujfnms1rth.ap-southeast-1.redshift.amazonaws.com'
        database = 'dwd_prod'
@@ -254,7 +254,7 @@ def main():
             csv_data = output_rev_per_dv.to_csv(index=False)
             st.download_button(label="Download Data as CSV", data=csv_data, 
                                file_name=f"{region_analysed} vs. {region_baseline}_{feature}_Rev per DV_{start_date} to {end_date}.csv",
-                               help = '''Press botton to download output as csv file''',
+                               help = '''Press button to download output as csv file''',
                                key="download_data")
         
        elif metric_analysed == 'CR':
@@ -274,7 +274,7 @@ def main():
             csv_data = output_cr.to_csv(index=False)
             st.download_button(label="Download Data as CSV", data=csv_data, 
                                file_name=f"{region_analysed} vs. {region_baseline}_{feature}_CR_{start_date} to {end_date}.csv", 
-                               help = '''Press botton to download output as csv file''',
+                               help = '''Press button to download output as csv file''',
                                key="download_data")
 
 
