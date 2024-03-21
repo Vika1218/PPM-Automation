@@ -98,7 +98,7 @@ def main():
     # Multi-select function
     def multiselect_customized(df,filter_name):
         option = st.multiselect(f"Select {filter_name.capitalize()} to Analyze",df[filter_name].unique(),
-                                placeholder="Choose one ore more options; Leaving blanck here for choosing all options",
+                                placeholder="Choose one ore more options; Leaving blank here for choosing all options",
                                 help = f'''Select to see the output only within one or multiple {filter_name} option(s)  \n -> Leaving the box blank to select all options  \n -> See the sidebar for the details of selected options''')
         if not option:
             option = df[filter_name].unique()
