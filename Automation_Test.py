@@ -17,8 +17,7 @@ def main():
     st.title("Product Feature MVP Automation - US")
 
     st.markdown('''### Step 1: Define the Overall Analysis Scope''')
-    st.write(''':question: Solve the problem: Comapred to *Baseline Region*, what kinds of *Feature Dimension* is more/less performed in *Region to Analyse* in terms of *Metric to Analyze* from *Start Date* to *End Date*''')
-    st.write(''':question: Define the output: Ordered by performance (*Rank*), how many outputs (*Output Limit*) I want to see?''')
+    st.write('''Which **products/features** are more preferred in the **selected region** vs the **baseline**? Measured by which **metric**?''')
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -59,7 +58,7 @@ def main():
     st.divider()
 
     st.markdown('''### Step 2: Set Thresholds for Control Metrics''')
-    st.write(''':exclamation: To ensure a robust analysis, set minimum thresholds for various control metrics to filter products based on their data size and performance''')
+    st.write('''To ensure a robust analysis, set minimum thresholds for various control metrics to filter products based on their data size and performance.''')
 
     col9,col10, col11, col12 = st.columns(4)
     with col9:
@@ -93,9 +92,8 @@ def main():
     st.divider()
 
     st.markdown('''### Step 3: Further Specify the Analysis Scope (If Necessary)''')
-    st.write(''':exclamation: Further filter products when you need to deepdive into specific category/subcategory/collection etc.''')
-    st.write(''':exclamation: Leave the multi-select boxes below blank to choose all options, and refer to the sidebar for details on selected options''')
-    st.write(''':exclamation: Be cautious not to overly restrict the analysis scope, as it may result in zero output from the model''')
+    st.write('''Filter products to deep dive into specific category/subcategory/collection, default is blank (no filter). Refer to the sidebar for filtered dimensions.''')
+    st.write(''':exclamation: If the filtered data is too small, it might result in 0 model output.''')
     
     # Multi-select function
     def multiselect_customized(df,filter_name):
@@ -111,7 +109,7 @@ def main():
     # Multi-select section
     df_cateoption = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'category_subcategory')
     df_collection = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'collection')
-    st.sidebar.subheader('''Selected Options in Step 3''')
+    st.sidebar.subheader('''Filtered Dimensions in Step 3''')
     category_option = multiselect_customized(df_cateoption,"category")
     subcategory_option = multiselect_customized(df_cateoption,"subcategory")
     collection_option = multiselect_customized(df_collection,"collection")
