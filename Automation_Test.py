@@ -237,6 +237,13 @@ def main():
            df_merge = df_merge[(df_merge['category'].isin(category_option)) &
                                (df_merge['subcategory'].isin(subcategory_option)) &
                                (df_merge['collection'].isin(collection_option))]
+           
+       if df_merge.empty == True:
+           st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1 or adding more options in step 3.")
+           # Stop program execution
+           raise SystemExit("Program halted due to empty DataFrame.")
+       else:
+           pass
         
        if metric_analysed == 'Rev per DV':
             
@@ -244,6 +251,14 @@ def main():
             output_rev_per_dv = rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
+            
+            if output_rev_per_dv.empty == True:
+                st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1, adjusting thresholds in step 2, or adding more options in step 3.")
+                # Stop program execution
+                raise SystemExit("Program halted due to empty DataFrame.")
+            else:
+                pass
+
             anova_each_rev_per_dv = rev_per_dv_anova(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature)
             # Get final output
             output_rev_per_dv = pd.merge(output_rev_per_dv, anova_each_rev_per_dv[['cate-feature', 'p_value']], on='cate-feature', how = 'left')
@@ -263,6 +278,14 @@ def main():
             output_cr = cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
+            
+            if output_cr.empty == True:
+                st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1, adjusting thresholds in step 2, or adding more options in step 3.")
+                # Stop program execution
+                raise SystemExit("Program halted due to empty DataFrame.")
+            else:
+                pass
+
             anova_each_cr = cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature)
             
             # Get final output
