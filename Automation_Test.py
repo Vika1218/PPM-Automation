@@ -44,11 +44,11 @@ def main():
                                        index=0)
     with col5:
         if analysed_level == 'Regional Level':
-            region_analysed = st.selectbox("Select Region to Analyze", ["US West", "US East", "US Southeast", "US Northwest"], 
+            region_analysed = st.selectbox("Select Analysed Region", ["US West", "US East", "US Southeast", "US Northwest"], 
                                        help = '''Region you need to analyse''',
                                        index=0)
         elif analysed_level == 'DMA Level':
-            region_analysed = st.selectbox("Select Region to Analyze", ["New York, NY","Los Angeles CA","Washington DC (Hagerstown MD)","San Francisco-Oakland-San Jose CA","Seattle-Tacoma WA"], 
+            region_analysed = st.selectbox("Select Analysed Region", ["New York, NY","Los Angeles CA","Washington DC (Hagerstown MD)","San Francisco-Oakland-San Jose CA","Seattle-Tacoma WA"], 
                                        help = ''' Region you need to analyse (Top 5 US DMAs available)''',
                                        index=0)
     with col6:
