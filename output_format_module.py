@@ -8,8 +8,10 @@ def number_format(df,col_name):
     elif col_name in ['total_revenue','average_price_analysed','us_total_cost']:
         return df[col_name].map('${:,.2f}'.format)
     # in format 1,000.00
-    elif col_name in ['rev_per_dv_analysed','rev_per_dv_baseline','p_value']:
+    elif col_name in ['rev_per_dv_analysed','rev_per_dv_baseline']:
         return df[col_name].map('{:,.2f}'.format)
+    elif col_name in ['p_value']:
+        return df[col_name].apply(lambda x: '{:,.2f}'.format(x) if x != 'Sample size too small to conduct ANOVA' else x)
     elif col_name in ['CR_analysed','CR_baseline', 'metric_diff_percent', 'order_percent','weighted_score']:
         return df[col_name].map('{:.2%}'.format)
     else:
