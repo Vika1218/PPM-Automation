@@ -268,11 +268,11 @@ def cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, ra
     
     # Format the output
     if feature == 'market_sku':
-        ranked_output = pd.merge(ranked_output, sku_info[['cate-feature', 'sku_name']], on='cate-feature', how='left')
+        ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'market_spu':
-        ranked_output = pd.merge(ranked_output, sku_info[['cate-feature', 'spu_name']], on='cate-feature', how='left')
+        ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'category':
