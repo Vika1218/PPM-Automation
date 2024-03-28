@@ -258,7 +258,7 @@ def main():
                       AND ds.category != 'Swatch'
                       AND ds.category IS NOT NULL
                       AND ds.subcategory != 'Accident Protection Plan'
-                      and DATE(fs2.payment_completion_time) BETWEEN '2024-03-01' AND '2024-03-21'
+                      and DATE(fs2.payment_completion_time) BETWEEN between %s AND %s
                       group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
                       order by 1,3
                       """
@@ -271,7 +271,7 @@ def main():
                       sum(frpdom.product_view) as total_detailview
                       from fact_dma_product_daily_onsite_metric frpdom  
                       where frpdom.market = 'US'
-                      and frpdom.date between '2024-03-01' AND '2024-03-21'
+                      and frpdom.date between between %s AND %s
                       group by 1,2,3,4
                       """
         
