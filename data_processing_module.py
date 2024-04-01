@@ -33,6 +33,39 @@ def process_us_cost(conn, us_cost_query, params):
     df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
     return df_us_cost
 
+def merge_and_fill(df_order, df_dv, market):
+    # Get unique values of 'unique_id'
+    id = pd.concat([df_order['unique_id'], df_dv['unique_id']]).unique()
+    
+    # Create a new DataFrame with unique 'unique_id'
+    df_merge = pd.DataFrame({'unique_id': id})
+    
+    # Merge 'df_merge' with 'df_order' and 'df_dv'
+    df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'region', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
+    df_merge = pd.merge(df_merge, df_dv[['unique_id', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview']], on='unique_id', how='left')
+    
+    # Fill missing values for 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper' with corresponding values from 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'
+    columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']
+    for column in columns_to_fill:
+        df_merge[column] = df_merge[column+ '_x'].fillna(df_merge[column + '_y'])
+    
+    # Drop redundant columns '_x' and '_y' after filling missing values
+    df_merge.drop(columns=['sku_name_x', 'market_spu_x', 'spu_name_x', 'master_category_x', 'category_x', 'subcategory_x', 'collection_x', 'color_tone_x', 'material_helper_x', 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'], inplace=True)
+    
+    # Fill in missing values for 'market', 'total_detailview', 'total_revenue', 'total_quantity', 'total_order'
+    df_merge['market'] = df_merge['market'].fillna(market)
+    df_merge['total_detailview'] = df_merge['total_detailview'].fillna(0)
+    df_merge['total_revenue'] = df_merge['total_revenue'].fillna(0)
+    df_merge['total_quantity'] = df_merge['total_quantity'].fillna(0)
+    df_merge['total_order'] = df_merge['total_order'].fillna(0)
+    
+    # Fill in order date, sku, region
+    df_merge.loc[df_merge['order_date'].isnull(), 'order_date'] = df_merge.loc[df_merge['order_date'].isnull(), 'unique_id'].str.split('_').str[2]
+    df_merge.loc[df_merge['region'].isnull(), 'region'] = df_merge.loc[df_merge['region'].isnull(), 'unique_id'].str.split('_').str[1]
+    df_merge.loc[df_merge['market_sku'].isnull(), 'market_sku'] = df_merge.loc[df_merge['market_sku'].isnull(), 'unique_id'].str.split('_').str[0]
+    
+    return df_merge
+
 def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4):

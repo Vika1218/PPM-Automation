@@ -6,7 +6,7 @@ import numpy as np
 import pingouin as pg
 
 # Import customized packages
-from data_processing_module import connect_to_database, fetch_data_from_database, process_orders, process_detail_views, process_us_cost, rev_per_dv_model, cr_model, rev_per_dv_anova, cr_anova, rev_per_dv_model_dma, cr_model_dma, rev_per_dv_anova_dma, cr_anova_dma
+from data_processing_module import connect_to_database, fetch_data_from_database, process_orders, process_detail_views, process_us_cost, merge_and_fill, rev_per_dv_model, cr_model, rev_per_dv_anova, cr_anova, rev_per_dv_model_dma, cr_model_dma, rev_per_dv_anova_dma, cr_anova_dma
 from output_format_module import number_format, rename_column, output_format
 
 # Streamlit app
@@ -207,16 +207,33 @@ def main():
                       order by 1,3
                       """
            dv_query = """
-                      select 
-                      frpdom.market_sku || '_' || frpdom.region || '_' || frpdom.date ::text AS unique_id,
+                      SELECT 
+                      frpdom.market_sku || '_' || frpdom.region || '_' || frpdom.date::TEXT AS unique_id,
                       frpdom.date,
-                      frpdom.market_sku,
                       frpdom.region,
-                      sum(frpdom.product_view) as total_detailview
-                      from fact_region_product_daily_onsite_metric frpdom 
-                      where frpdom.market = 'US'
-                      and frpdom.date between %s AND %s
-                      group by 1,2,3,4
+                      frpdom.market_sku,
+                      ds.sku_name,
+                      ds.market_spu,
+                      ds.spu_name,
+                      ds.master_category,
+                      ds.category,
+                      ds.subcategory,
+                      ds.collection,
+                      ds.color_tone,
+                      COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
+                      SUM(frpdom.product_view) AS total_detailview
+                      FROM fact_region_product_daily_onsite_metric frpdom
+                      LEFT JOIN 
+                          dim_sku ds ON frpdom.market_sku = ds.market_sku
+                      LEFT JOIN 
+                          (SELECT market_sku, value FROM dim_sku_property WHERE property_type = 'Material Helper') dskp_material_helper ON ds.market_sku = dskp_material_helper.market_sku
+                      LEFT JOIN 
+                          (SELECT market_spu, value FROM dim_spu_property WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
+                      WHERE frpdom.market = 'US'
+                         AND frpdom.date BETWEEN %s AND %s
+                         and ds.category != 'Swatch'
+                         and ds.category IS NOT NULL
+                      GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12,13
                       """
        elif analysed_level == 'DMA Level':
            order_query = """
@@ -266,13 +283,30 @@ def main():
                       select 
                       frpdom.market_sku || '_' || frpdom.metro || '_' || frpdom.date ::text AS unique_id,
                       frpdom.date,
-                      frpdom.market_sku,
                       frpdom.metro as dma,
+                      frpdom.market_sku,
+                      ds.sku_name,
+                      ds.market_spu,
+                      ds.spu_name,
+                      ds.master_category,
+                      ds.category,
+                      ds.subcategory,
+                      ds.collection,
+                      ds.color_tone,
+                      COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
                       sum(frpdom.product_view) as total_detailview
-                      from fact_dma_product_daily_onsite_metric frpdom  
-                      where frpdom.market = 'US'
-                      and frpdom.date between between %s AND %s
-                      group by 1,2,3,4
+                      from fact_dma_product_daily_onsite_metric frpdom
+                      LEFT JOIN 
+                          dim_sku ds ON frpdom.market_sku = ds.market_sku
+                      LEFT JOIN 
+                          (SELECT market_sku, value FROM dim_sku_property WHERE property_type = 'Material Helper') dskp_material_helper ON ds.market_sku = dskp_material_helper.market_sku
+                      LEFT JOIN 
+                          (SELECT market_spu, value FROM dim_spu_property WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
+                      WHERE frpdom.market = 'US'
+                         AND frpdom.date BETWEEN %s AND %s
+                         and ds.category != 'Swatch'
+                         and ds.category IS NOT NULL
+                      GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12,13
                       """
         
        us_cost_query = """
@@ -307,7 +341,7 @@ def main():
        df_dv = fetch_data_from_database(conn, dv_query, params)
        df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
        conn.close()
-       df_merge = pd.merge(df_order, df_dv[['unique_id', 'total_detailview']], on='unique_id', how='left')
+       df_merge = merge_and_fill(df_order,df_dv,market)
        df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
 
        # Calculate order percent
