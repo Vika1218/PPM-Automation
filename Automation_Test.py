@@ -4,6 +4,7 @@ import psycopg2
 import pandas as pd
 import numpy as np
 import pingouin as pg
+from datetime import datetime
 
 # Import customized packages
 from data_processing_module import connect_to_database, fetch_data_from_database, process_orders, process_detail_views, process_us_cost, merge_and_fill, rev_per_dv_model, cr_model, rev_per_dv_anova, cr_anova, rev_per_dv_model_dma, cr_model_dma, rev_per_dv_anova_dma, cr_anova_dma
@@ -74,7 +75,7 @@ def main():
     # Date range
     col8, col9, col10, col11 = st.columns(4)
     with col8:
-        start_date = st.date_input("Select Start Date", help = '''State the start date for your analysis''')
+        start_date = st.date_input("Select Start Date", datetime(datetime.now().year, 1, 1), help = '''State the start date for your analysis''')
     with col9:
         end_date = st.date_input("Select End Date", help = '''State the end date for your analysis''')
     if end_date < start_date:
@@ -165,8 +166,7 @@ def main():
        port = 5439 #change if needed
        
        # order record: change the query if needed
-       if analysed_level == 'Regional Level':
-           order_query = """
+       order_query_region = """
                       SELECT
                       fs3.market_sku || '_' ||fs2.region || '_' ||date(fs2.payment_completion_time)::text AS unique_id,
                       date(fs2.payment_completion_time) as order_date,
@@ -206,7 +206,7 @@ def main():
                       group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14
                       order by 1,3
                       """
-           dv_query = """
+       dv_query_region = """
                       SELECT 
                       frpdom.market_sku || '_' || frpdom.region || '_' || frpdom.date::TEXT AS unique_id,
                       frpdom.date,
@@ -235,14 +235,13 @@ def main():
                          and ds.category IS NOT NULL
                       GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12,13
                       """
-       elif analysed_level == 'DMA Level':
-           order_query = """
+           
+       order_query_dma = """
                       SELECT
                       fs3.market_sku || '_' ||dd.ga_dma || '_' ||date(fs2.payment_completion_time)::text AS unique_id,
                       date(fs2.payment_completion_time) as order_date,
                       fs2.market,
-                      dd.ga_dma,
-                      fs2.region, 
+                      dd.ga_dma as dma, 
                       fs3.market_sku,
                       fs3.sku_name,
                       fs3.market_spu,
@@ -275,38 +274,56 @@ def main():
                       AND ds.category != 'Swatch'
                       AND ds.category IS NOT NULL
                       AND ds.subcategory != 'Accident Protection Plan'
-                      and DATE(fs2.payment_completion_time) BETWEEN between %s AND %s
-                      group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+                      and DATE(fs2.payment_completion_time) between %s AND %s
+                      and dd.ga_dma in ('New York, NY','Los Angeles CA','Washington DC (Hagerstown MD)','San Francisco-Oakland-San Jose CA','Seattle-Tacoma WA')
+                      group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14
                       order by 1,3
                       """
-           dv_query = """
-                      select 
-                      frpdom.market_sku || '_' || frpdom.metro || '_' || frpdom.date ::text AS unique_id,
-                      frpdom.date,
-                      frpdom.metro as dma,
-                      frpdom.market_sku,
-                      ds.sku_name,
-                      ds.market_spu,
-                      ds.spu_name,
-                      ds.master_category,
-                      ds.category,
-                      ds.subcategory,
-                      ds.collection,
-                      ds.color_tone,
-                      COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
-                      sum(frpdom.product_view) as total_detailview
-                      from fact_dma_product_daily_onsite_metric frpdom
-                      LEFT JOIN 
-                          dim_sku ds ON frpdom.market_sku = ds.market_sku
-                      LEFT JOIN 
-                          (SELECT market_sku, value FROM dim_sku_property WHERE property_type = 'Material Helper') dskp_material_helper ON ds.market_sku = dskp_material_helper.market_sku
-                      LEFT JOIN 
-                          (SELECT market_spu, value FROM dim_spu_property WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
-                      WHERE frpdom.market = 'US'
-                         AND frpdom.date BETWEEN %s AND %s
-                         and ds.category != 'Swatch'
-                         and ds.category IS NOT NULL
-                      GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12,13
+       dv_query_dma = """
+                      SELECT
+                          frpdom.market_sku || '_' || frpdom.metro || '_' || frpdom.date ::text AS unique_id,
+                          frpdom.date,
+                          frpdom.metro AS dma,
+                          frpdom.market_sku,
+                          ds.sku_name,
+                          ds.market_spu,
+                          ds.spu_name,
+                          ds.master_category,
+                          ds.category,
+                          ds.subcategory,
+                          ds.collection,
+                          ds.color_tone,
+                          COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
+                          SUM(frpdom.product_view) AS total_detailview
+                      FROM
+                          fact_dma_product_daily_onsite_metric frpdom
+                      LEFT JOIN dim_sku ds ON frpdom.market_sku = ds.market_sku
+                      LEFT JOIN (
+                          SELECT
+                              market_sku,
+                              value
+                          FROM
+                              dim_sku_property
+                          WHERE
+                              property_type = 'Material Helper'
+                      ) dskp_material_helper ON ds.market_sku = dskp_material_helper.market_sku
+                      LEFT JOIN (
+                          SELECT
+                              market_spu,
+                              value
+                          FROM
+                              dim_spu_property
+                          WHERE
+                              property_type = 'Material Helper'
+                      ) dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
+                      WHERE
+                          frpdom.market = 'US'
+                          AND frpdom.date BETWEEN %s AND %s
+                          AND ds.category != 'Swatch'
+                          AND ds.category IS NOT NULL
+                          AND frpdom.metro in ('New York, NY','Los Angeles CA','Washington DC (Hagerstown MD)','San Francisco-Oakland-San Jose CA','Seattle-Tacoma WA')
+                      GROUP BY
+                          1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
                       """
         
        us_cost_query = """
@@ -337,39 +354,135 @@ def main():
        
        # Connect to the database & extract data & merge dataset
        conn = connect_to_database(host, database, username, password, port)
-       df_order = fetch_data_from_database(conn, order_query, params)
-       df_dv = fetch_data_from_database(conn, dv_query, params)
-       df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
-       conn.close()
-       df_merge = merge_and_fill(df_order,df_dv,market)
-       df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
+       if analysed_level == 'Regional Level':
+           # fetch data
+           df_order = fetch_data_from_database(conn, order_query_region, params)
+           df_dv = fetch_data_from_database(conn, dv_query_region, params)
+           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           conn.close()
+           df_merge = merge_and_fill(df_order,df_dv,market,analysed_level)
 
-       # Calculate order percent
-       df_merge['order_percent_of_total'] = df_merge['total_order'] / df_merge['total_order'].sum()
-       df_merge['order_percent_of_category'] = df_merge.groupby('category')['total_order'].transform(lambda x: x / x.sum())
+           #create key
+           df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
 
-       # Filter out required data
-       if feature == 'color_tone':
-           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+           # Calculate order percent
+           df_merge['order_percent_of_category'] = df_merge.groupby('region')['total_order'].transform(lambda x: x / x.sum())
+           df_merge['order_percent_of_category'] = df_merge.groupby(['region','category'])['total_order'].transform(lambda x: x / x.sum())
+           
+           # Filter out required data
+           if feature == 'color_tone':
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
                                (df_merge['subcategory'].isin(subcategory_option)) &
                                (df_merge['collection'].isin(collection_option)) &
                                 (df_merge['color_tone'].isin(color_tone_option))]
-       elif feature == 'material_helper':
-           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+           elif feature == 'material_helper':
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
                                (df_merge['subcategory'].isin(subcategory_option)) &
                                (df_merge['collection'].isin(collection_option)) &
                                 (df_merge['material_helper'].isin(material_helper_option))]
-       else:
-           df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+           else:
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
                                (df_merge['subcategory'].isin(subcategory_option)) &
                                (df_merge['collection'].isin(collection_option))]
+           # raise error message if needed
+           if df_merge.empty == True:
+               st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1 or adding more options in step 3.")
+               # Stop program execution
+               raise SystemExit("Program halted due to empty DataFrame.")
+           else:
+               pass
            
-       if df_merge.empty == True:
-           st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1 or adding more options in step 3.")
-           # Stop program execution
-           raise SystemExit("Program halted due to empty DataFrame.")
-       else:
-           pass
+       elif analysed_level == 'DMA Level' and baseline_level == 'Country & Regional Level':
+           # fetch data
+           df_order_analysed = fetch_data_from_database(conn, order_query_dma, params)
+           df_order_baseline = fetch_data_from_database(conn, order_query_region, params)
+           df_dv_analysed = fetch_data_from_database(conn, dv_query_dma, params)
+           df_dv_baseline = fetch_data_from_database(conn, dv_query_region, params)
+           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           conn.close()
+           df_merge_analysed = merge_and_fill(df_order_analysed,df_dv_analysed,market,analysed_level,include=0)
+           df_merge_baseline = merge_and_fill(df_order_baseline,df_dv_baseline,market,analysed_level,include=1)
+
+           #create key
+           df_merge_analysed['cate-feature'] = df_merge_analysed['category'] + ": " + df_merge_analysed[feature]
+           df_merge_baseline['cate-feature'] = df_merge_baseline['category'] + ": " + df_merge_baseline[feature]
+
+           # Calculate order percent
+           df_merge_analysed['order_percent_of_category'] = df_merge_analysed.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
+           df_merge_analysed['order_percent_of_category'] = df_merge_analysed.groupby(['dma','category'])['total_order'].transform(lambda x: x / x.sum())
+
+           # Filter out required data
+           if feature == 'color_tone':
+            df_merge_analysed = df_merge_analysed[(df_merge_analysed['category'].isin(category_option)) &
+                                                  (df_merge_analysed['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_analysed['collection'].isin(collection_option)) &
+                                                  (df_merge_analysed['color_tone'].isin(color_tone_option))]
+            df_merge_baseline = df_merge_baseline[(df_merge_baseline['category'].isin(category_option)) &
+                                                  (df_merge_baseline['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_baseline['collection'].isin(collection_option)) &
+                                                  (df_merge_baseline['color_tone'].isin(color_tone_option))]
+           elif feature == 'material_helper':
+            df_merge_analysed = df_merge_analysed[(df_merge_analysed['category'].isin(category_option)) &
+                                                  (df_merge_analysed['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_analysed['collection'].isin(collection_option)) &
+                                                  (df_merge_analysed['material_helper'].isin(material_helper_option))]
+            df_merge_baseline = df_merge_baseline[(df_merge_baseline['category'].isin(category_option)) &
+                                                  (df_merge_baseline['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_baseline['collection'].isin(collection_option)) &
+                                                  (df_merge_baseline['material_helper'].isin(material_helper_option))]
+           else:
+            df_merge_analysed = df_merge_analysed[(df_merge_analysed['category'].isin(category_option)) &
+                                                  (df_merge_analysed['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_analysed['collection'].isin(collection_option))]
+            df_merge_baseline = df_merge_baseline[(df_merge_baseline['category'].isin(category_option)) &
+                                                  (df_merge_baseline['subcategory'].isin(subcategory_option)) &
+                                                  (df_merge_baseline['collection'].isin(collection_option))]
+            
+            # raise error message if needed
+           if df_merge_analysed.empty == True or df_merge_baseline.empty == True:
+               st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1 or adding more options in step 3.")
+               # Stop program execution
+               raise SystemExit("Program halted due to empty DataFrame.")
+           else:
+               pass
+
+       elif analysed_level == 'DMA Level' and baseline_level == 'DMA Level':
+           # fetch data
+           df_order = fetch_data_from_database(conn, order_query_dma, params)
+           df_dv = fetch_data_from_database(conn, dv_query_dma, params)
+           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           conn.close()
+           df_merge = merge_and_fill(df_order,df_dv,market,analysed_level,include=0)
+
+           #create key
+           df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
+
+           # Calculate order percent
+           df_merge['order_percent_of_category'] = df_merge.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
+           df_merge['order_percent_of_category'] = df_merge.groupby(['dma','category'])['total_order'].transform(lambda x: x / x.sum())
+           
+           # Filter out required data
+           if feature == 'color_tone':
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option)) &
+                                (df_merge['color_tone'].isin(color_tone_option))]
+           elif feature == 'material_helper':
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option)) &
+                                (df_merge['material_helper'].isin(material_helper_option))]
+           else:
+               df_merge = df_merge[(df_merge['category'].isin(category_option)) &
+                               (df_merge['subcategory'].isin(subcategory_option)) &
+                               (df_merge['collection'].isin(collection_option))]   
+           # raise error message if needed
+           if df_merge.empty == True:
+               st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1 or adding more options in step 3.")
+               # Stop program execution
+               raise SystemExit("Program halted due to empty DataFrame.")
+           else:
+               pass
         
        if metric_analysed == 'Rev per DV':
             
@@ -379,10 +492,17 @@ def main():
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
             elif analysed_level == 'DMA Level':
-                output_rev_per_dv = rev_per_dv_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                if baseline_level == 'Country & Regional Level':
+                    output_rev_per_dv = rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
-                            metric_control_4, metric_threshold_4)
-            
+                            metric_control_4, metric_threshold_4, 
+                            baseline_level, df_merge_analysed=df_merge_analysed,df_merge_baseline=df_merge_baseline)
+                elif baseline_level == 'DMA Level':
+                    output_rev_per_dv = rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
+                            metric_control_4, metric_threshold_4, 
+                            baseline_level, df_merge=df_merge)
+
             if output_rev_per_dv.empty == True:
                 st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1, adjusting thresholds in step 2, or adding more options in step 3.")
                 # Stop program execution
@@ -393,7 +513,12 @@ def main():
             if analysed_level == 'Regional Level':
                 anova_each_rev_per_dv = rev_per_dv_anova(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature)
             elif analysed_level == 'DMA Level':
-                anova_each_rev_per_dv = rev_per_dv_anova_dma(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature)
+                if baseline_level == 'Country & Regional Level':
+                    anova_each_rev_per_dv = rev_per_dv_anova_dma(output_rev_per_dv, region_analysed, region_baseline, feature,
+                                                             baseline_level, df_merge_analysed=df_merge_analysed, df_merge_baseline=df_merge_baseline)
+                elif baseline_level == 'DMA Level':
+                    anova_each_rev_per_dv = rev_per_dv_anova_dma(output_rev_per_dv, region_analysed, region_baseline, feature,
+                                                             baseline_level, df_merge=df_merge)
             
             # Get final output
             output_rev_per_dv = pd.merge(output_rev_per_dv, anova_each_rev_per_dv[['cate-feature', 'p_value']], on='cate-feature', how = 'left')
@@ -415,9 +540,16 @@ def main():
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
             elif analysed_level == 'DMA Level':
-                output_cr = cr_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                if analysed_level == 'Regional Level':
+                    output_cr = cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
-                            metric_control_4, metric_threshold_4)
+                            metric_control_4, metric_threshold_4, 
+                            baseline_level, df_merge_analysed=df_merge_analysed,df_merge_baseline=df_merge_baseline)
+                elif baseline_level == 'DMA Level':
+                    output_cr = cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                            metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
+                            metric_control_4, metric_threshold_4, 
+                            baseline_level, df_merge=df_merge)
             
             if output_cr.empty == True:
                 st.error("Your current selections did not yield any data matches. Please consider expanding the date range in step 1, adjusting thresholds in step 2, or adding more options in step 3.")
@@ -429,7 +561,12 @@ def main():
             if analysed_level == 'Regional Level':
                 anova_each_cr = cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature)
             elif analysed_level == 'DMA Level':
-                anova_each_cr = cr_anova_dma(df_merge, output_cr, region_analysed, region_baseline, feature)
+                if analysed_level == 'Regional Level':
+                    anova_each_cr = cr_anova_dma(output_cr, region_analysed, region_baseline, feature,
+                                                 baseline_level, df_merge_analysed=df_merge_analysed, df_merge_baseline=df_merge_baseline)
+                elif baseline_level == 'DMA Level':
+                    anova_each_cr = cr_anova_dma(output_cr, region_analysed, region_baseline, feature,
+                                                 baseline_level, df_merge=df_merge)
             
             # Get final output
             output_cr = pd.merge(output_cr, anova_each_cr[['cate-feature', 'p_value']], on='cate-feature', how = 'left')

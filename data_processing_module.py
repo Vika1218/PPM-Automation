@@ -33,7 +33,7 @@ def process_us_cost(conn, us_cost_query, params):
     df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
     return df_us_cost
 
-def merge_and_fill(df_order, df_dv, market):
+def merge_and_fill(df_order, df_dv, market, analysed_level,include=None):
     # Get unique values of 'unique_id'
     id = pd.concat([df_order['unique_id'], df_dv['unique_id']]).unique()
     
@@ -41,29 +41,52 @@ def merge_and_fill(df_order, df_dv, market):
     df_merge = pd.DataFrame({'unique_id': id})
     
     # Merge 'df_merge' with 'df_order' and 'df_dv'
-    df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'region', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
-    df_merge = pd.merge(df_merge, df_dv[['unique_id', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview']], on='unique_id', how='left')
+    if analysed_level == 'Regional Level':
+        df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'region', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
+        df_merge = pd.merge(df_merge, df_dv[['unique_id', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview']], on='unique_id', how='left')
+        columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']
+    elif analysed_level == 'DMA Level':
+        if include == 0: #no region in column
+            df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'dma', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
+            df_merge = pd.merge(df_merge, df_dv[['unique_id','sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview']], on='unique_id', how='left')
+            columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']
+        elif include == 1: #have region in column (for baseline is regional level)
+            df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'region', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
+            df_merge = pd.merge(df_merge, df_dv[['unique_id','sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview']], on='unique_id', how='left')
+            columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']    
     
-    # Fill missing values for 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper' with corresponding values from 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'
-    columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']
+    # Fill missing values
     for column in columns_to_fill:
         df_merge[column] = df_merge[column+ '_x'].fillna(df_merge[column + '_y'])
     
     # Drop redundant columns '_x' and '_y' after filling missing values
-    df_merge.drop(columns=['sku_name_x', 'market_spu_x', 'spu_name_x', 'master_category_x', 'category_x', 'subcategory_x', 'collection_x', 'color_tone_x', 'material_helper_x', 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'], inplace=True)
-    
+    if analysed_level == 'Regional Level':
+        df_merge.drop(columns=['sku_name_x', 'market_spu_x', 'spu_name_x', 'master_category_x', 'category_x', 'subcategory_x', 'collection_x', 'color_tone_x', 'material_helper_x', 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'], inplace=True)
+        # Fill in order date, sku, region
+        df_merge.loc[df_merge['order_date'].isnull(), 'order_date'] = df_merge.loc[df_merge['order_date'].isnull(), 'unique_id'].str.split('_').str[2]
+        df_merge.loc[df_merge['region'].isnull(), 'region'] = df_merge.loc[df_merge['region'].isnull(), 'unique_id'].str.split('_').str[1]
+        df_merge.loc[df_merge['market_sku'].isnull(), 'market_sku'] = df_merge.loc[df_merge['market_sku'].isnull(), 'unique_id'].str.split('_').str[0]
+    elif analysed_level == 'DMA Level':
+        if include == 0:#no region in column
+            df_merge.drop(columns=['sku_name_x', 'market_spu_x', 'spu_name_x', 'master_category_x', 'category_x', 'subcategory_x', 'collection_x', 'color_tone_x', 'material_helper_x', 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'], inplace=True)
+            # Fill in order date, sku, dma
+            df_merge.loc[df_merge['order_date'].isnull(), 'order_date'] = df_merge.loc[df_merge['order_date'].isnull(), 'unique_id'].str.split('_').str[2]
+            df_merge.loc[df_merge['dma'].isnull(), 'dma'] = df_merge.loc[df_merge['dma'].isnull(), 'unique_id'].str.split('_').str[1]
+            df_merge.loc[df_merge['market_sku'].isnull(), 'market_sku'] = df_merge.loc[df_merge['market_sku'].isnull(), 'unique_id'].str.split('_').str[0]
+        elif include == 1: #have region in column (for baseline is regional level)
+            df_merge.drop(columns=['sku_name_x', 'market_spu_x', 'spu_name_x', 'master_category_x', 'category_x', 'subcategory_x', 'collection_x', 'color_tone_x', 'material_helper_x', 'sku_name_y', 'market_spu_y', 'spu_name_y', 'master_category_y', 'category_y', 'subcategory_y', 'collection_y', 'color_tone_y', 'material_helper_y'], inplace=True)
+            # Fill in order date, sku, dma
+            df_merge.loc[df_merge['order_date'].isnull(), 'order_date'] = df_merge.loc[df_merge['order_date'].isnull(), 'unique_id'].str.split('_').str[2]
+            df_merge.loc[df_merge['region'].isnull(), 'region'] = df_merge.loc[df_merge['region'].isnull(), 'unique_id'].str.split('_').str[1]
+            df_merge.loc[df_merge['market_sku'].isnull(), 'market_sku'] = df_merge.loc[df_merge['market_sku'].isnull(), 'unique_id'].str.split('_').str[0]
+
     # Fill in missing values for 'market', 'total_detailview', 'total_revenue', 'total_quantity', 'total_order'
     df_merge['market'] = df_merge['market'].fillna(market)
     df_merge['total_detailview'] = df_merge['total_detailview'].fillna(0)
     df_merge['total_revenue'] = df_merge['total_revenue'].fillna(0)
     df_merge['total_quantity'] = df_merge['total_quantity'].fillna(0)
     df_merge['total_order'] = df_merge['total_order'].fillna(0)
-    
-    # Fill in order date, sku, region
-    df_merge.loc[df_merge['order_date'].isnull(), 'order_date'] = df_merge.loc[df_merge['order_date'].isnull(), 'unique_id'].str.split('_').str[2]
-    df_merge.loc[df_merge['region'].isnull(), 'region'] = df_merge.loc[df_merge['region'].isnull(), 'unique_id'].str.split('_').str[1]
-    df_merge.loc[df_merge['market_sku'].isnull(), 'market_sku'] = df_merge.loc[df_merge['market_sku'].isnull(), 'unique_id'].str.split('_').str[0]
-    
+
     return df_merge
 
 def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
@@ -476,20 +499,22 @@ def cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature):
         
     return anova_each
 
-def rev_per_dv_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+def rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
-                            metric_control_4, metric_threshold_4):
+                            metric_control_4, metric_threshold_4,
+                            baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
     
-    # Extract subset of dataset
-    if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
-    elif region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['ga_dma'] == region_baseline]
+    if baseline_level == 'DMA Level':
+        # Extract subset of dataset
+        data_analysed = df_merge[df_merge['dma'] == region_analysed]
+        data_baseline = df_merge[df_merge['dma'] == region_baseline]
+    elif baseline_level == 'Country & Regional Level':
+        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
+        elif region_baseline == 'US All':
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline.copy()
     
     # Group and aggregate data for data_analysed
     if feature == 'category':
@@ -583,8 +608,13 @@ def rev_per_dv_model_dma(df_merge, df_us_cost, region_analysed, region_baseline,
         ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
 
     # Get the sku info (in case need to add product name or more features in the output)
-    sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-    sku_info = sku_info.drop_duplicates()
+    if baseline_level == 'DMA Level':
+        sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
+        sku_info = sku_info.drop_duplicates()
+    elif baseline_level == 'Country & Regional Level':
+        sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
+                                     df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
+        sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -605,18 +635,19 @@ def rev_per_dv_model_dma(df_merge, df_us_cost, region_analysed, region_baseline,
     
     return ranked_output.head(output_limit)
 
-def rev_per_dv_anova_dma(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature):
+def rev_per_dv_anova_dma(output_rev_per_dv, region_analysed, region_baseline, feature,baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
     
-    # Extract subset of dataset
-    if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
-    elif region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['ga_dma'] == region_baseline]
+    if baseline_level == 'DMA Level':
+        # Extract subset of dataset
+        data_analysed = df_merge[df_merge['dma'] == region_analysed]
+        data_baseline = df_merge[df_merge['dma'] == region_baseline]
+    elif baseline_level == 'Country & Regional Level':
+        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
+        elif region_baseline == 'US All':
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline.copy()
     
     # See ANOVA for the feature_list get from the comparison model
     feature_list = output_rev_per_dv['cate-feature'].unique()
@@ -687,20 +718,21 @@ def rev_per_dv_anova_dma(df_merge, output_rev_per_dv, region_analysed, region_ba
         
     return anova_each
 
-def cr_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+def cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
-                            metric_control_4, metric_threshold_4):
-    
-    # Extract subset of dataset
-    if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
-    elif region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['ga_dma'] == region_baseline]
+                            metric_control_4, metric_threshold_4,
+                            baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
+    if baseline_level == 'DMA Level':
+        # Extract subset of dataset
+        data_analysed = df_merge[df_merge['dma'] == region_analysed]
+        data_baseline = df_merge[df_merge['dma'] == region_baseline]
+    elif baseline_level == 'Country & Regional Level':
+        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
+        elif region_baseline == 'US All':
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline.copy()
     
     # Group and aggregate data for data_analysed
     if feature == 'category':
@@ -792,10 +824,15 @@ def cr_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature
         ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
     elif rank == 'Bottom':
         ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
-    
+
     # Get the sku info (in case need to add product name or more features in the output)
-    sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-    sku_info = sku_info.drop_duplicates()
+    if baseline_level == 'DMA Level':
+        sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
+        sku_info = sku_info.drop_duplicates()
+    elif baseline_level == 'Country & Regional Level':
+        sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
+                                     df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
+        sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -816,18 +853,19 @@ def cr_model_dma(df_merge, df_us_cost, region_analysed, region_baseline, feature
     
     return ranked_output.head(output_limit)
 
-def cr_anova_dma(df_merge, output_cr, region_analysed, region_baseline, feature):
+def cr_anova_dma(output_cr, region_analysed, region_baseline, feature, baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
     
-    # Extract subset of dataset
-    if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
-    elif region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['ga_dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['ga_dma'] == region_baseline]
+    if baseline_level == 'DMA Level':
+        # Extract subset of dataset
+        data_analysed = df_merge[df_merge['dma'] == region_analysed]
+        data_baseline = df_merge[df_merge['dma'] == region_baseline]
+    elif baseline_level == 'Country & Regional Level':
+        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
+        elif region_baseline == 'US All':
+            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+            data_baseline = df_merge_baseline.copy()
     
     # See ANOVA for the feature_list get from the comparison model
     feature_list = output_cr['cate-feature'].unique()
