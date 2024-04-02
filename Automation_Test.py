@@ -354,6 +354,12 @@ def main():
        
        # Connect to the database & extract data & merge dataset
        conn = connect_to_database(host, database, username, password, port)
+       try:
+           conn = connect_to_database(host, database, username, password, port)
+       except psycopg2.OperationalError as e:
+           st.error("Error connecting to the database: {}. Try it later.".format(e))
+           # Stop program execution
+           raise SystemExit("Error connecting to the database")
        if analysed_level == 'Regional Level':
            # fetch data
            df_order = fetch_data_from_database(conn, order_query_region, params)
