@@ -372,7 +372,7 @@ def main():
            df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
 
            # Calculate order percent
-           df_merge['order_percent_of_category'] = df_merge.groupby('region')['total_order'].transform(lambda x: x / x.sum())
+           df_merge['order_percent_of_total'] = df_merge.groupby('region')['total_order'].transform(lambda x: x / x.sum())
            df_merge['order_percent_of_category'] = df_merge.groupby(['region','category'])['total_order'].transform(lambda x: x / x.sum())
            
            # Filter out required data
@@ -414,7 +414,7 @@ def main():
            df_merge_baseline['cate-feature'] = df_merge_baseline['category'] + ": " + df_merge_baseline[feature]
 
            # Calculate order percent
-           df_merge_analysed['order_percent_of_category'] = df_merge_analysed.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
+           df_merge_analysed['order_percent_of_total'] = df_merge_analysed.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
            df_merge_analysed['order_percent_of_category'] = df_merge_analysed.groupby(['dma','category'])['total_order'].transform(lambda x: x / x.sum())
 
            # Filter out required data
@@ -464,7 +464,7 @@ def main():
            df_merge['cate-feature'] = df_merge['category'] + ": " + df_merge[feature]
 
            # Calculate order percent
-           df_merge['order_percent_of_category'] = df_merge.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
+           df_merge['order_percent_of_total'] = df_merge.groupby('dma')['total_order'].transform(lambda x: x / x.sum())
            df_merge['order_percent_of_category'] = df_merge.groupby(['dma','category'])['total_order'].transform(lambda x: x / x.sum())
            
            # Filter out required data
