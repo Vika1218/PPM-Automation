@@ -98,7 +98,7 @@ def main():
     col12,col13, col14, col15 = st.columns(4)
     with col12:
         metric_control_1 = 'us_total_cost_per_sku'
-        metric_threshold_1 = st.number_input("Threshold for US Average Cost per SKU >=", min_value = 0, value=100, step=1,
+        metric_threshold_1 = st.number_input("Threshold for US Ave. Cost per SKU >=", min_value = 0, value=100, step=1,
                                              help = '''Set the minimum cost per sku in the US market  \n -> E.G., if analyzing by category, this threshold represents the average costs per SKU spent on your seleted category at US country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month
                                              ''',
                                              key="us_total_cost_threshold_per_sku")
