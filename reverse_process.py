@@ -89,18 +89,19 @@ def merge_and_fill(df_order, df_dv, market, analysed_level,include=None):
 
     return df_merge
 
-def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+def rev_per_dv_model(df_merge, df_us_cost, region_analysed, feature1, feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4):
     
     # Extract subset of dataset
-    if region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
+    data_analysed = df_merge[df_merge['region'] == region_analysed]
+    data_baseline = df_merge.copy()
     
+    if feature2 == 'No Selection':
+        feature = feature1
+    else:
+        feature = feature2
+
     # Group and aggregate data for data_analysed
     if feature == 'category':
         grouped_data_analysed = data_analysed.groupby('cate-feature').agg({
@@ -189,11 +190,7 @@ def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, fea
         (merged_data[metric_control_4] >= metric_threshold_4)
     ]
     
-    # Rank the output
-    if rank == 'Top':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
-    elif rank == 'Bottom':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
+    ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
 
     # Get the sku info (in case need to add product name or more features in the output)
     sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
@@ -204,6 +201,7 @@ def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, fea
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
+        #filter the specify feature
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost_per_sku',
@@ -215,20 +213,20 @@ def rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, fea
     else:
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
-    
-    return ranked_output.head(output_limit)
 
-def cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+    return ranked_output
+
+def cr_model(df_merge, df_us_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4):
     
-    # Extract subset of dataset
-    if region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge.copy()
+    data_analysed = df_merge[df_merge['region'] == region_analysed]
+    data_baseline = df_merge.copy()
+
+    if feature2 == "No Selection":
+        feature = feature1
     else:
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
+        feature = feature2
     
     # Group and aggregate data for data_analysed
     if feature == 'category':
@@ -318,11 +316,7 @@ def cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, ra
         (merged_data[metric_control_4] >= metric_threshold_4)
     ]
     
-    # Rank the output
-    if rank == 'Top':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
-    elif rank == 'Bottom':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
+    ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
     
     # Get the sku info (in case need to add product name or more features in the output)
     sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
@@ -345,20 +339,15 @@ def cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, ra
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
-    return ranked_output.head(output_limit)
+    return ranked_output
 
-def rev_per_dv_anova(df_merge, output_rev_per_dv, region_analysed, region_baseline, feature):
+def rev_per_dv_anova(df_merge, results_df, region_analysed):
     
-    # Extract subset of dataset
-    if region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
+    data_analysed = df_merge[df_merge['region'] == region_analysed]
+    data_baseline = df_merge.copy()
     
     # See ANOVA for the feature_list get from the comparison model
-    feature_list = output_rev_per_dv['cate-feature'].unique()
+    feature_list = results_df['cate-feature'].unique()
     
     # Create a dictionary to store the ANOVA results
     # Now conduct Welch's ANOVA to know: for each feature in output list, does their daily metric are significantly different between regions? 
@@ -426,18 +415,13 @@ def rev_per_dv_anova(df_merge, output_rev_per_dv, region_analysed, region_baseli
         
     return anova_each
 
-def cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature):
+def cr_anova(df_merge, results_df, region_analysed):
     
-    # Extract subset of dataset
-    if region_baseline == 'US All':
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge.copy()
-    else:
-        data_analysed = df_merge[df_merge['region'] == region_analysed]
-        data_baseline = df_merge[df_merge['region'] == region_baseline]
+    data_analysed = df_merge[df_merge['region'] == region_analysed]
+    data_baseline = df_merge.copy()
     
     # See ANOVA for the feature_list get from the comparison model
-    feature_list = output_cr['cate-feature'].unique()
+    feature_list = results_df['cate-feature'].unique()
     
     # Create a dictionary to store the ANOVA results
     # Now conduct Welch's ANOVA to know: for each feature in output list, does their daily metric are significantly different between regions? 
@@ -505,22 +489,18 @@ def cr_anova(df_merge, output_cr, region_analysed, region_baseline, feature):
         
     return anova_each
 
-def rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+def rev_per_dv_model_dma(df_us_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4,
-                            baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
+                            df_merge_analysed, df_merge_baseline):
     
-    if baseline_level == 'DMA Level':
-        # Extract subset of dataset
-        data_analysed = df_merge[df_merge['dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['dma'] == region_baseline]
-    elif baseline_level == 'Country & Regional Level':
-        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
-        elif region_baseline == 'US All':
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline.copy()
+    data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+    data_baseline = df_merge_baseline.copy()
+
+    if feature2 == "No Selection":
+        feature = feature1
+    else:
+        feature = feature2
     
     # Group and aggregate data for data_analysed
     if feature == 'category':
@@ -610,20 +590,11 @@ def rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, 
         (merged_data[metric_control_4] >= metric_threshold_4)
     ]
     
-    # Rank the output
-    if rank == 'Top':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
-    elif rank == 'Bottom':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
+    ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
 
-    # Get the sku info (in case need to add product name or more features in the output)
-    if baseline_level == 'DMA Level':
-        sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-        sku_info = sku_info.drop_duplicates()
-    elif baseline_level == 'Country & Regional Level':
-        sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
+    sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
                                      df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
-        sku_info = sku_info.drop_duplicates()
+    sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -642,24 +613,15 @@ def rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, 
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
-    return ranked_output.head(output_limit)
+    return ranked_output
 
-def rev_per_dv_anova_dma(output_rev_per_dv, region_analysed, region_baseline, feature,baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
-    
-    if baseline_level == 'DMA Level':
-        # Extract subset of dataset
-        data_analysed = df_merge[df_merge['dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['dma'] == region_baseline]
-    elif baseline_level == 'Country & Regional Level':
-        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
-        elif region_baseline == 'US All':
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline.copy()
+def rev_per_dv_anova_dma(results_df, region_analysed, df_merge_analysed, df_merge_baseline):
+
+    data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+    data_baseline = df_merge_baseline.copy()
     
     # See ANOVA for the feature_list get from the comparison model
-    feature_list = output_rev_per_dv['cate-feature'].unique()
+    feature_list = results_df['cate-feature'].unique()
     
     # Create a dictionary to store the ANOVA results
     # Now conduct Welch's ANOVA to know: for each feature in output list, does their daily metric are significantly different between regions? 
@@ -727,22 +689,19 @@ def rev_per_dv_anova_dma(output_rev_per_dv, region_analysed, region_baseline, fe
         
     return anova_each
 
-def cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+def cr_model_dma(df_us_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4,
-                            baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
-    if baseline_level == 'DMA Level':
-        # Extract subset of dataset
-        data_analysed = df_merge[df_merge['dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['dma'] == region_baseline]
-    elif baseline_level == 'Country & Regional Level':
-        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
-        elif region_baseline == 'US All':
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline.copy()
+                            df_merge_analysed, df_merge_baseline):
+
+    data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+    data_baseline = df_merge_baseline.copy()
     
+    if feature2 == "No Selection":
+        feature = feature1
+    else:
+        feature = feature2
+
     # Group and aggregate data for data_analysed
     if feature == 'category':
         grouped_data_analysed = data_analysed.groupby('cate-feature').agg({
@@ -831,20 +790,12 @@ def cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, ou
         (merged_data[metric_control_4] >= metric_threshold_4)
     ]
     
-    # Rank the output
-    if rank == 'Top':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
-    elif rank == 'Bottom':
-        ranked_output = filtered_output.sort_values(by='weighted_score', ascending= True)
+    ranked_output = filtered_output.sort_values(by='weighted_score', ascending= False)
 
     # Get the sku info (in case need to add product name or more features in the output)
-    if baseline_level == 'DMA Level':
-        sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-        sku_info = sku_info.drop_duplicates()
-    elif baseline_level == 'Country & Regional Level':
-        sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
+    sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
                                      df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
-        sku_info = sku_info.drop_duplicates()
+    sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -863,24 +814,15 @@ def cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, ou
         ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
-    return ranked_output.head(output_limit)
+    return ranked_output
 
-def cr_anova_dma(output_cr, region_analysed, region_baseline, feature, baseline_level, df_merge=None, df_merge_analysed=None, df_merge_baseline=None):
-    
-    if baseline_level == 'DMA Level':
-        # Extract subset of dataset
-        data_analysed = df_merge[df_merge['dma'] == region_analysed]
-        data_baseline = df_merge[df_merge['dma'] == region_baseline]
-    elif baseline_level == 'Country & Regional Level':
-        if region_baseline in ['US West', 'US East', 'US Southeast', 'US Northwest']:
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline[df_merge_baseline['region'] == region_baseline]
-        elif region_baseline == 'US All':
-            data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
-            data_baseline = df_merge_baseline.copy()
+def cr_anova_dma(results_df, region_analysed, df_merge_analysed, df_merge_baseline):
+
+    data_analysed = df_merge_analysed[df_merge_analysed['dma'] == region_analysed]
+    data_baseline = df_merge_baseline.copy()
     
     # See ANOVA for the feature_list get from the comparison model
-    feature_list = output_cr['cate-feature'].unique()
+    feature_list = results_df['cate-feature'].unique()
     
     # Create a dictionary to store the ANOVA results
     # Now conduct Welch's ANOVA to know: for each feature in output list, does their daily metric are significantly different between regions? 

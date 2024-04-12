@@ -5,7 +5,7 @@ def number_format(df,col_name):
     if col_name in ['sku_count','total_quantity','total_order','total_detailview',]:
         return df[col_name].map('{:,.0f}'.format)
     # in format $1,000.00
-    elif col_name in ['total_revenue','average_price_analysed','us_total_cost']:
+    elif col_name in ['total_revenue','average_price_analysed','us_total_cost_per_sku']:
         return df[col_name].map('${:,.2f}'.format)
     # in format 1,000.00
     elif col_name in ['rev_per_dv_analysed','rev_per_dv_baseline']:
@@ -35,7 +35,7 @@ def rename_column(df):
         'average_price_analysed': 'Ave. Price_Analysed',
         'total_order': 'Order_Analysed',
         'total_detailview': 'Detailview_Analysed',
-        'us_total_cost': 'US Total Cost',
+        'us_total_cost_per_sku': 'US Average Cost per SKU',
         'rev_per_dv_analysed': 'Rev/DV_Analysed',
         'rev_per_dv_baseline': 'Rev/DV_Baseline',
         'CR_analysed': 'CR_Analysed',
@@ -48,6 +48,20 @@ def rename_column(df):
     df.rename(columns=column_mapping, inplace=True)
 
 def output_format(df, feature):
+    # Drop useless columns
+    if feature in ['market_sku', 'market_spu', 'category', 'subcategory','collection']:
+        df = df.drop(columns=['cate-feature'])
+
+    for col in df.columns:
+        df[col] = number_format(df, col)
+    rename_column(df)
+    return df
+
+def output_format_reverse(df, feature1, feature2):
+    if feature2 == 'No Selection':
+        feature = feature1
+    else:
+        feature = feature2
     # Drop useless columns
     if feature in ['market_sku', 'market_spu', 'category', 'subcategory','collection']:
         df = df.drop(columns=['cate-feature'])

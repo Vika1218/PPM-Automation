@@ -13,9 +13,9 @@ from output_format_module import number_format, rename_column, output_format
 # Streamlit app
 def main():
     
-    st.set_page_config(layout="wide")
+    st.set_page_config(page_title="PPM Analysis - Basic",layout='wide')
 
-    st.title("Product Feature MVP Automation - US")
+    st.title("Product Feature Preference Model - Basic")
 
     st.markdown('''### Step 1: Define the Overall Analysis Scope''')
     st.write('''Which **products/features** are more preferred in the **selected region** vs the **baseline**? Measured by which **metric**?''')
@@ -97,15 +97,15 @@ def main():
 
     col12,col13, col14, col15 = st.columns(4)
     with col12:
-        metric_control_1 = 'us_total_cost'
-        metric_threshold_1 = st.number_input("Threshold for US Total Cost >=", min_value = 0.00, value=300.00, step=0.01,
-                                             help = '''Set the minimum total cost for products in the US market  \n -> E.G., if analyzing by category, this threshold represents the total costs spent on the category at US country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month  \n -> Less granular features typically require higher cost threshold
+        metric_control_1 = 'us_total_cost_per_sku'
+        metric_threshold_1 = st.number_input("Threshold for US Average Cost per SKU >=", min_value = 0, value=100, step=1,
+                                             help = '''Set the minimum cost per sku in the US market  \n -> E.G., if analyzing by category, this threshold represents the average costs per SKU spent on your seleted category at US country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month
                                              ''',
-                                             key="us_total_cost_threshold")
+                                             key="us_total_cost_threshold_per_sku")
     with col13:
         if metric_analysed == 'Rev per DV':
             metric_control_2 = 'rev_per_dv_analysed'
-            metric_threshold_2 = st.number_input(f"Threshold for {metric_analysed}_Analysed >=", min_value = 0.00, value=0.00, step=0.01, 
+            metric_threshold_2 = st.number_input(f"Threshold for {metric_analysed}_Analysed >=", min_value = 0.0, value=0.0, step=0.1, 
                                                  help = '''Set the minimum Rev per DV for products in the analysed region  \n -> Example reference: Rev per DV >= 2.00''',
                                                  key="metric_analyzed_threshold")
         elif metric_analysed == 'CR':
@@ -144,7 +144,7 @@ def main():
     # Multi-select section
     df_cateoption = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'category_subcategory')
     df_collection = pd.read_excel('Product_Info for MultiSelect.xlsx', sheet_name = 'collection')
-    st.sidebar.subheader('''Filtered Dimensions in Step 3''')
+    st.sidebar.subheader('''Basic Model - Filtered Dimensions in Step 3''')
     category_option = multiselect_customized(df_cateoption,"category")
     subcategory_option = multiselect_customized(df_cateoption,"subcategory")
     collection_option = multiselect_customized(df_collection,"collection")
