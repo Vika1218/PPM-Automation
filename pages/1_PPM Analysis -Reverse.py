@@ -532,7 +532,7 @@ def main():
             # Allow users to download the data as CSV
             csv_data = final_df.to_csv(index=False)
             st.download_button(label="Download Data as CSV", data=csv_data, 
-                               file_name=f"Feature1:{feature1}_Feature2:{feature2}_{analysed_level}_Rev per DV_{start_date} to {end_date}.csv",
+                               file_name=f"{feature1}_{feature2}_{analysed_level}_Rev per DV_{start_date} to {end_date}.csv",
                                help = '''Press button to download output as csv file''',
                                key="download_data")
         
@@ -603,7 +603,7 @@ def main():
             # Allow users to download the data as CSV
             csv_data = final_df.to_csv(index=False)
             st.download_button(label="Download Data as CSV", data=csv_data, 
-                               file_name=f"Feature1:{feature1}_Feature2:{feature2}_{analysed_level}_CR_{start_date} to {end_date}.csv",
+                               file_name=f"{feature1}_{feature2}_{analysed_level}_CR_{start_date} to {end_date}.csv",
                                help = '''Press button to download output as csv file''',
                                key="download_data")
 
