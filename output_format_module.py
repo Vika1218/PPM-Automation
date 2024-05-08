@@ -5,7 +5,7 @@ def number_format(df,col_name):
     if col_name in ['sku_count','total_quantity','total_order','total_detailview',]:
         return df[col_name].map('{:,.0f}'.format)
     # in format $1,000.00
-    elif col_name in ['total_revenue','average_price_analysed','us_total_cost_per_sku']:
+    elif col_name in ['total_revenue','average_price_analysed','country_total_cost_per_sku']:
         return df[col_name].map('${:,.2f}'.format)
     # in format 1,000.00
     elif col_name in ['rev_per_dv_analysed','rev_per_dv_baseline']:
@@ -35,7 +35,7 @@ def rename_column(df):
         'average_price_analysed': 'Ave. Price_Analysed',
         'total_order': 'Order_Analysed',
         'total_detailview': 'Detailview_Analysed',
-        'us_total_cost_per_sku': 'US Average Cost per SKU',
+        'country_total_cost_per_sku': 'Country Average Cost per SKU',
         'rev_per_dv_analysed': 'Rev/DV_Analysed',
         'rev_per_dv_baseline': 'Rev/DV_Baseline',
         'CR_analysed': 'CR_Analysed',

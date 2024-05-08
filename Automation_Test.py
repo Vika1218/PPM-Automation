@@ -22,11 +22,16 @@ def main():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        market = st.selectbox("Select Market to Analyze", ["US"], 
+        market = st.selectbox("Select Market to Analyze", ["US",'AU'], 
                                        help = '''Market you need to analyse''',
                                        index=0)
     with col2:
-        analysed_level = st.selectbox("Select Granularity for Analysed Region", ["Regional Level",'DMA Level'], 
+        if market == 'US':
+            analysed_level = st.selectbox("Select Granularity for Analysed Region", ["Regional Level",'DMA Level'], 
+                                       help = '''Granularity for region analysed''',
+                                       index=0)
+        elif market == 'AU':
+            analysed_level = st.selectbox("Select Granularity for Analysed Region", ["Regional Level"], 
                                        help = '''Granularity for region analysed''',
                                        index=0)
     with col3:
@@ -45,7 +50,12 @@ def main():
                                        index=0)
     with col5:
         if analysed_level == 'Regional Level':
-            region_analysed = st.selectbox("Select Analysed Region", ["US West", "US East", "US Southeast", "US Northwest"], 
+            if market == 'US':
+                region_analysed = st.selectbox("Select Analysed Region", ["US West", "US East", "US Southeast", "US Northwest"], 
+                                       help = '''Region you need to analyse''',
+                                       index=0)
+            elif market == 'AU':
+                region_analysed = st.selectbox("Select Analysed Region", ['AU Sydney','AU Melbourne','AU Perth'], 
                                        help = '''Region you need to analyse''',
                                        index=0)
         elif analysed_level == 'DMA Level':
@@ -54,7 +64,12 @@ def main():
                                        index=0)
     with col6:
         if analysed_level == 'Regional Level':
-            region_baseline = st.selectbox("Select Baseline Region", ["US All", "US West", "US East", "US Southeast", "US Northwest"], 
+            if market == 'US':
+                region_baseline = st.selectbox("Select Baseline Region", ["US All", "US West", "US East", "US Southeast", "US Northwest"], 
+                                       help = '''Region as the baseline in the comparison process  \n -> US All means comparing your analysed region to the overall US market'''
+                                       ,index=0)
+            elif market == 'AU':
+                region_baseline = st.selectbox("Select Baseline Region", ["AU All", 'AU Sydney','AU Melbourne','AU Perth'], 
                                        help = '''Region as the baseline in the comparison process  \n -> US All means comparing your analysed region to the overall US market'''
                                        ,index=0)
         elif analysed_level == 'DMA Level':
@@ -81,7 +96,7 @@ def main():
     if end_date < start_date:
         st.error("End date must be later than start date. Please select a valid end date.")
     else:
-        params = {'start_date': start_date, 'end_date': end_date}
+        params = {'market': market,'start_date': start_date, 'end_date': end_date}
     with col10:
         rank = st.radio("Select Rank", ["Top", "Bottom"], 
                         help = '''Rank the output of model  \n -> Select 'Top' to find products with better performance in analysed region  \n -> Select 'Bottom' to find products with worse performance in analysed region''',
@@ -97,11 +112,11 @@ def main():
 
     col12,col13, col14, col15 = st.columns(4)
     with col12:
-        metric_control_1 = 'us_total_cost_per_sku'
-        metric_threshold_1 = st.number_input("Threshold for US Ave. Cost per SKU >=", min_value = 0, value=100, step=1,
-                                             help = '''Set the minimum cost per sku in the US market  \n -> E.G., if analyzing by category, this threshold represents the average costs per SKU spent on your seleted category at US country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month
+        metric_control_1 = 'country_total_cost_per_sku'
+        metric_threshold_1 = st.number_input(f"Threshold for {market} Ave. Cost per SKU >=", min_value = 0, value=100, step=1,
+                                             help = f'''Set the minimum cost per sku in the {market} market  \n -> E.G., if analyzing by category, this threshold represents the average costs per SKU spent on your seleted category at {market} country level within your specified date range  \n Adjust this value based on your selected features and date range:  \n -> Example reference: at least $100 per sku per month
                                              ''',
-                                             key="us_total_cost_threshold_per_sku")
+                                             key="country_total_cost_threshold_per_sku")
     with col13:
         if metric_analysed == 'Rev per DV':
             metric_control_2 = 'rev_per_dv_analysed'
@@ -195,7 +210,7 @@ def main():
                       FROM dim_spu_property
                       WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
                       where fs2.spree_channel = 'web'
-                      AND fs2.market = 'US'
+                      AND fs2.market = %s
                       AND fs2.classification = 'complete'
                       AND fs2.order_type = 'Goods'
                       AND fs2.pure_swatch_order_flag = 'N'
@@ -229,7 +244,7 @@ def main():
                           (SELECT market_sku, value FROM dim_sku_property WHERE property_type = 'Material Helper') dskp_material_helper ON ds.market_sku = dskp_material_helper.market_sku
                       LEFT JOIN 
                           (SELECT market_spu, value FROM dim_spu_property WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
-                      WHERE frpdom.market = 'US'
+                      WHERE frpdom.market = %s
                          AND frpdom.date BETWEEN %s AND %s
                          and ds.category != 'Swatch'
                          and ds.category IS NOT NULL
@@ -267,7 +282,7 @@ def main():
                                   FROM dim_spu_property
                                   WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
                       where fs2.spree_channel = 'web'
-                      AND fs2.market = 'US'
+                      AND fs2.market = %s
                       AND fs2.classification = 'complete'
                       AND fs2.order_type = 'Goods'
                       AND fs2.pure_swatch_order_flag = 'N'
@@ -317,7 +332,7 @@ def main():
                               property_type = 'Material Helper'
                       ) dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
                       WHERE
-                          frpdom.market = 'US'
+                          frpdom.market = %s
                           AND frpdom.date BETWEEN %s AND %s
                           AND ds.category != 'Swatch'
                           AND ds.category IS NOT NULL
@@ -326,7 +341,7 @@ def main():
                           1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
                       """
         
-       us_cost_query = """
+       country_cost_query = """
                       select 
                       fpam.market_sku,
                       ds.sku_name,
@@ -338,7 +353,7 @@ def main():
                       ds.collection,
                       ds.color_tone,
                       COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
-                      sum(fpam.cost) as us_total_cost
+                      sum(fpam.cost) as country_total_cost
                       from fact_product_ads_metric fpam
                       LEFT JOIN dim_sku ds ON fpam.market_sku = ds.market_sku
                       LEFT JOIN ( SELECT market_sku, value
@@ -347,8 +362,8 @@ def main():
                       LEFT JOIN ( SELECT market_spu, value
                       FROM dim_spu_property
                       WHERE property_type = 'Material Helper') dspp_material_helper ON ds.market_spu = dspp_material_helper.market_spu
-                      where fpam.date between %s AND %s
-                      and fpam.market = 'US'
+                      where fpam.market = %s
+                      and fpam.date between %s AND %s
                       group by 1,2,3,4,5,6,7,8,9,10
                       """
        
@@ -364,7 +379,7 @@ def main():
            # fetch data
            df_order = fetch_data_from_database(conn, order_query_region, params)
            df_dv = fetch_data_from_database(conn, dv_query_region, params)
-           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           df_country_cost = fetch_data_from_database(conn, country_cost_query, params)
            conn.close()
            df_merge = merge_and_fill(df_order,df_dv,market,analysed_level)
 
@@ -404,7 +419,7 @@ def main():
            df_order_baseline = fetch_data_from_database(conn, order_query_region, params)
            df_dv_analysed = fetch_data_from_database(conn, dv_query_dma, params)
            df_dv_baseline = fetch_data_from_database(conn, dv_query_region, params)
-           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           df_country_cost = fetch_data_from_database(conn, country_cost_query, params)
            conn.close()
            df_merge_analysed = merge_and_fill(df_order_analysed,df_dv_analysed,market,analysed_level,include=0)
            df_merge_baseline = merge_and_fill(df_order_baseline,df_dv_baseline,market,analysed_level,include=1)
@@ -456,7 +471,7 @@ def main():
            # fetch data
            df_order = fetch_data_from_database(conn, order_query_dma, params)
            df_dv = fetch_data_from_database(conn, dv_query_dma, params)
-           df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
+           df_country_cost = fetch_data_from_database(conn, country_cost_query, params)
            conn.close()
            df_merge = merge_and_fill(df_order,df_dv,market,analysed_level,include=0)
 
@@ -494,17 +509,17 @@ def main():
             
             # Call comparison model & ANOVA
             if analysed_level == 'Regional Level':
-                output_rev_per_dv = rev_per_dv_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                output_rev_per_dv = rev_per_dv_model(df_merge, df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
             elif analysed_level == 'DMA Level':
                 if baseline_level == 'Country & Regional Level':
-                    output_rev_per_dv = rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                    output_rev_per_dv = rev_per_dv_model_dma(df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4, 
                             baseline_level, df_merge_analysed=df_merge_analysed,df_merge_baseline=df_merge_baseline)
                 elif baseline_level == 'DMA Level':
-                    output_rev_per_dv = rev_per_dv_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                    output_rev_per_dv = rev_per_dv_model_dma(df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4, 
                             baseline_level, df_merge=df_merge)
@@ -542,17 +557,17 @@ def main():
             
             # Call comparison model & ANOVA
             if analysed_level == 'Regional Level':
-                output_cr = cr_model(df_merge, df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                output_cr = cr_model(df_merge, df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4)
             elif analysed_level == 'DMA Level':
                 if analysed_level == 'Regional Level':
-                    output_cr = cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                    output_cr = cr_model_dma(df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4, 
                             baseline_level, df_merge_analysed=df_merge_analysed,df_merge_baseline=df_merge_baseline)
                 elif baseline_level == 'DMA Level':
-                    output_cr = cr_model_dma(df_us_cost, region_analysed, region_baseline, feature, rank, output_limit,
+                    output_cr = cr_model_dma(df_country_cost, region_analysed, region_baseline, feature, rank, output_limit,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2, metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4, 
                             baseline_level, df_merge=df_merge)
