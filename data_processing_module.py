@@ -28,9 +28,9 @@ def process_detail_views(conn, dv_query, params):
     df_dv = fetch_data_from_database(conn, dv_query, params)
     return df_dv
 
-def process_us_cost(conn, us_cost_query, params):
+def process_country_cost(conn, country_cost_query, params):
     # Process US cost data
-    df_country_cost = fetch_data_from_database(conn, us_cost_query, params)
+    df_country_cost = fetch_data_from_database(conn, country_cost_query, params)
     return df_country_cost
 
 def merge_and_fill(df_order, df_dv, market, analysed_level,include=None):

@@ -28,10 +28,10 @@ def process_detail_views(conn, dv_query, params):
     df_dv = fetch_data_from_database(conn, dv_query, params)
     return df_dv
 
-def process_us_cost(conn, us_cost_query, params):
-    # Process US cost data
-    df_us_cost = fetch_data_from_database(conn, us_cost_query, params)
-    return df_us_cost
+def process_country_cost(conn, country_cost_query, params):
+    # Process cost data
+    df_country_cost = fetch_data_from_database(conn, country_cost_query, params)
+    return df_country_cost
 
 def merge_and_fill(df_order, df_dv, market, analysed_level,include=None):
     # Get unique values of 'unique_id'
@@ -89,7 +89,7 @@ def merge_and_fill(df_order, df_dv, market, analysed_level,include=None):
 
     return df_merge
 
-def rev_per_dv_model(df_merge, df_us_cost, region_analysed, feature1, feature2,
+def rev_per_dv_model(df_merge, df_country_cost, region_analysed, feature1, feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4):
     
@@ -170,17 +170,17 @@ def rev_per_dv_model(df_merge, df_us_cost, region_analysed, feature1, feature2,
     # Calculate weighted score
     merged_data['weighted_score'] = merged_data['metric_diff_percent'] * merged_data['order_percent']
     
-    # Group & Merge products' US cost
-    df_us_cost['cate-feature'] = df_us_cost['category'] + ": " + df_us_cost[feature]
-    grouped_us_cost = df_us_cost.groupby('cate-feature').agg({
-        'us_total_cost': 'sum'
+    # Group & Merge products' cost
+    df_country_cost['cate-feature'] = df_country_cost['category'] + ": " + df_country_cost[feature]
+    grouped_country_cost = df_country_cost.groupby('cate-feature').agg({
+        'country_total_cost': 'sum'
     }).reset_index()
     
-    merged_data = pd.merge(merged_data, grouped_us_cost[['cate-feature','us_total_cost']],
+    merged_data = pd.merge(merged_data, grouped_country_cost[['cate-feature','country_total_cost']],
                            on='cate-feature', how='left')
     
-    merged_data['us_total_cost_per_sku'] = merged_data['us_total_cost']/merged_data['sku_count']
-    merged_data.drop(columns=['us_total_cost'], inplace=True)
+    merged_data['country_total_cost_per_sku'] = merged_data['country_total_cost']/merged_data['sku_count']
+    merged_data.drop(columns=['country_total_cost'], inplace=True)
 
     # Filter the output according to the conditions & output limit
     filtered_output = merged_data[
@@ -199,24 +199,24 @@ def rev_per_dv_model(df_merge, df_us_cost, region_analysed, feature1, feature2,
     # Format the output
     if feature == 'market_sku':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
         #filter the specify feature
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'category':
         ranked_output = ranked_output.loc[:, ~ranked_output.columns.duplicated(keep='first')]
-        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     else:
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
 
     return ranked_output
 
-def cr_model(df_merge, df_us_cost, region_analysed, feature1,feature2,
+def cr_model(df_merge, df_country_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4):
     
@@ -296,17 +296,17 @@ def cr_model(df_merge, df_us_cost, region_analysed, feature1,feature2,
     # Calculate weighted score
     merged_data['weighted_score'] = merged_data['metric_diff_percent'] * merged_data['order_percent']
     
-    # Group & Merge products' US cost
-    df_us_cost['cate-feature'] = df_us_cost['category'] + ": " + df_us_cost[feature]
-    grouped_us_cost = df_us_cost.groupby('cate-feature').agg({
-        'us_total_cost': 'sum'
+    # Group & Merge products' cost
+    df_country_cost['cate-feature'] = df_country_cost['category'] + ": " + df_country_cost[feature]
+    grouped_country_cost = df_country_cost.groupby('cate-feature').agg({
+        'country_total_cost': 'sum'
     }).reset_index()
     
-    merged_data = pd.merge(merged_data, grouped_us_cost[['cate-feature', 'us_total_cost']],
+    merged_data = pd.merge(merged_data, grouped_country_cost[['cate-feature', 'country_total_cost']],
                            on='cate-feature', how='left')
     
-    merged_data['us_total_cost_per_sku'] = merged_data['us_total_cost']/merged_data['sku_count']
-    merged_data.drop(columns=['us_total_cost'], inplace=True)
+    merged_data['country_total_cost_per_sku'] = merged_data['country_total_cost']/merged_data['sku_count']
+    merged_data.drop(columns=['country_total_cost'], inplace=True)
 
     # Filter the output according to the conditions & output limit
     filtered_output = merged_data[
@@ -325,18 +325,18 @@ def cr_model(df_merge, df_us_cost, region_analysed, feature1,feature2,
     # Format the output
     if feature == 'market_sku':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'category':
         ranked_output = ranked_output.loc[:, ~ranked_output.columns.duplicated(keep='first')]
-        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     else:
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
     return ranked_output
@@ -489,7 +489,7 @@ def cr_anova(df_merge, results_df, region_analysed):
         
     return anova_each
 
-def rev_per_dv_model_dma(df_us_cost, region_analysed, feature1,feature2,
+def rev_per_dv_model_dma(df_country_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4,
                             df_merge_analysed, df_merge_baseline):
@@ -570,17 +570,17 @@ def rev_per_dv_model_dma(df_us_cost, region_analysed, feature1,feature2,
     # Calculate weighted score
     merged_data['weighted_score'] = merged_data['metric_diff_percent'] * merged_data['order_percent']
     
-    # Group & Merge products' US cost
-    df_us_cost['cate-feature'] = df_us_cost['category'] + ": " + df_us_cost[feature]
-    grouped_us_cost = df_us_cost.groupby('cate-feature').agg({
-        'us_total_cost': 'sum'
+    # Group & Merge products' cost
+    df_country_cost['cate-feature'] = df_country_cost['category'] + ": " + df_country_cost[feature]
+    grouped_country_cost = df_country_cost.groupby('cate-feature').agg({
+        'country_total_cost': 'sum'
     }).reset_index()
     
-    merged_data = pd.merge(merged_data, grouped_us_cost[['cate-feature','us_total_cost']],
+    merged_data = pd.merge(merged_data, grouped_country_cost[['cate-feature','country_total_cost']],
                            on='cate-feature', how='left')
     
-    merged_data['us_total_cost_per_sku'] = merged_data['us_total_cost']/merged_data['sku_count']
-    merged_data.drop(columns=['us_total_cost'], inplace=True)
+    merged_data['country_total_cost_per_sku'] = merged_data['country_total_cost']/merged_data['sku_count']
+    merged_data.drop(columns=['country_total_cost'], inplace=True)
 
     # Filter the output according to the conditions & output limit
     filtered_output = merged_data[
@@ -599,18 +599,18 @@ def rev_per_dv_model_dma(df_us_cost, region_analysed, feature1,feature2,
     # Format the output
     if feature == 'market_sku':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'category':
         ranked_output = ranked_output.loc[:, ~ranked_output.columns.duplicated(keep='first')]
-        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     else:
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'rev_per_dv_analysed', 'rev_per_dv_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
     return ranked_output
@@ -689,7 +689,7 @@ def rev_per_dv_anova_dma(results_df, region_analysed, df_merge_analysed, df_merg
         
     return anova_each
 
-def cr_model_dma(df_us_cost, region_analysed, feature1,feature2,
+def cr_model_dma(df_country_cost, region_analysed, feature1,feature2,
                             metric_control_1, metric_threshold_1, metric_control_2, metric_threshold_2,metric_control_3, metric_threshold_3,
                             metric_control_4, metric_threshold_4,
                             df_merge_analysed, df_merge_baseline):
@@ -770,17 +770,17 @@ def cr_model_dma(df_us_cost, region_analysed, feature1,feature2,
     # Calculate weighted score
     merged_data['weighted_score'] = merged_data['metric_diff_percent'] * merged_data['order_percent']
     
-    # Group & Merge products' US cost
-    df_us_cost['cate-feature'] = df_us_cost['category'] + ": " + df_us_cost[feature]
-    grouped_us_cost = df_us_cost.groupby('cate-feature').agg({
-        'us_total_cost': 'sum'
+    # Group & Merge products' cost
+    df_country_cost['cate-feature'] = df_country_cost['category'] + ": " + df_country_cost[feature]
+    grouped_country_cost = df_country_cost.groupby('cate-feature').agg({
+        'country_total_cost': 'sum'
     }).reset_index()
     
-    merged_data = pd.merge(merged_data, grouped_us_cost[['cate-feature', 'us_total_cost']],
+    merged_data = pd.merge(merged_data, grouped_country_cost[['cate-feature', 'country_total_cost']],
                            on='cate-feature', how='left')
     
-    merged_data['us_total_cost_per_sku'] = merged_data['us_total_cost']/merged_data['sku_count']
-    merged_data.drop(columns=['us_total_cost'], inplace=True)
+    merged_data['country_total_cost_per_sku'] = merged_data['country_total_cost']/merged_data['sku_count']
+    merged_data.drop(columns=['country_total_cost'], inplace=True)
 
     # Filter the output according to the conditions & output limit
     filtered_output = merged_data[
@@ -800,18 +800,18 @@ def cr_model_dma(df_us_cost, region_analysed, feature1,feature2,
     # Format the output
     if feature == 'market_sku':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price_analysed','total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     elif feature == 'category':
         ranked_output = ranked_output.loc[:, ~ranked_output.columns.duplicated(keep='first')]
-        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     else:
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'us_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category', 'total_revenue', 'total_quantity','average_price_analysed', 'total_order', 'total_detailview', 'country_total_cost_per_sku',
                         'CR_analysed', 'CR_baseline', 'metric_diff_percent', 'order_percent', 'weighted_score'])
     
     return ranked_output
