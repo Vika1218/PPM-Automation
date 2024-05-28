@@ -197,7 +197,10 @@ def rev_per_dv_model(df_merge, df_country_cost, region_analysed, region_baseline
 
     # Get the sku info (in case need to add product name or more features in the output)
     sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-    sku_info = sku_info.drop_duplicates()
+    if feature == 'market_spu':
+        sku_info = sku_info.drop_duplicates(subset=[feature])
+    else:
+        sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -326,7 +329,10 @@ def cr_model(df_merge, df_country_cost, region_analysed, region_baseline, featur
     
     # Get the sku info (in case need to add product name or more features in the output)
     sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-    sku_info = sku_info.drop_duplicates()
+    if feature == 'market_spu':
+        sku_info = sku_info.drop_duplicates(subset=[feature])
+    else:
+        sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -619,11 +625,17 @@ def rev_per_dv_model_dma(df_country_cost, region_analysed, region_baseline, feat
     # Get the sku info (in case need to add product name or more features in the output)
     if baseline_level == 'DMA Level':
         sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-        sku_info = sku_info.drop_duplicates()
+        if feature == 'market_spu':
+            sku_info = sku_info.drop_duplicates(subset=[feature])
+        else:
+            sku_info = sku_info.drop_duplicates()
     elif baseline_level == 'Country & Regional Level':
         sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
                                      df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
-        sku_info = sku_info.drop_duplicates()
+        if feature == 'market_spu':
+            sku_info = sku_info.drop_duplicates(subset=[feature])
+        else:
+            sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
@@ -840,11 +852,17 @@ def cr_model_dma(df_country_cost, region_analysed, region_baseline, feature, ran
     # Get the sku info (in case need to add product name or more features in the output)
     if baseline_level == 'DMA Level':
         sku_info = df_merge[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]
-        sku_info = sku_info.drop_duplicates()
+        if feature == 'market_spu':
+            sku_info = sku_info.drop_duplicates(subset=[feature])
+        else:
+            sku_info = sku_info.drop_duplicates()
     elif baseline_level == 'Country & Regional Level':
         sku_info = pd.concat([df_merge_analysed[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']], 
                                      df_merge_baseline[['market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']]])
-        sku_info = sku_info.drop_duplicates()
+        if feature == 'market_spu':
+            sku_info = sku_info.drop_duplicates(subset=[feature])
+        else:
+            sku_info = sku_info.drop_duplicates()
     
     # Format the output
     if feature == 'market_sku':
