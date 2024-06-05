@@ -206,8 +206,8 @@ def main():
                       ds.color_tone,
                       COALESCE(dskp_material_helper.value, dspp_material_helper.value) AS material_helper,
                       SUM(frpdom.product_view) AS total_detailview,
-                      SUM(frpdom.unique_add_to_cart) AS atc_session
-                      FROM fact_product_daily_onsite_metric frpdom
+                      SUM(frpdom.add_to_cart) AS atc
+                      FROM fact_region_product_daily_onsite_metric frpdom
                       LEFT JOIN 
                           dim_sku ds ON frpdom.market_sku = ds.market_sku
                       LEFT JOIN 
@@ -218,6 +218,7 @@ def main():
                          AND frpdom.date BETWEEN %s AND %s
                          and ds.category != 'Swatch'
                          and ds.category IS NOT NULL
+                         and frpdom.region != 'Overseas'
                       GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12
                       """
         

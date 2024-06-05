@@ -42,7 +42,7 @@ def merge_and_fill(df_order, df_dv, df_country_cost, market):
     
     # Merge 'df_merge' with 'df_order','df_dv','df_country_cost'
     df_merge = pd.merge(df_merge, df_order[['unique_id', 'order_date', 'market', 'market_sku', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_revenue', 'total_quantity', 'total_order']], on='unique_id', how='left')
-    df_merge = pd.merge(df_merge, df_dv[['unique_id', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview', 'atc_session']], on='unique_id', how='left')
+    df_merge = pd.merge(df_merge, df_dv[['unique_id', 'sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper', 'total_detailview', 'atc']], on='unique_id', how='left')
     df_merge = pd.merge(df_merge, df_country_cost[['unique_id', 'country_total_cost']], on='unique_id', how='left')
     columns_to_fill = ['sku_name', 'market_spu', 'spu_name', 'master_category', 'category', 'subcategory', 'collection', 'color_tone', 'material_helper']
     
@@ -62,7 +62,7 @@ def merge_and_fill(df_order, df_dv, df_country_cost, market):
     df_merge['total_revenue'] = df_merge['total_revenue'].fillna(0)
     df_merge['total_quantity'] = df_merge['total_quantity'].fillna(0)
     df_merge['total_order'] = df_merge['total_order'].fillna(0)
-    df_merge['atc_session'] = df_merge['atc_session'].fillna(0)
+    df_merge['atc'] = df_merge['atc'].fillna(0)
     df_merge['country_total_cost'] = df_merge['country_total_cost'].fillna(0)
 
     return df_merge
@@ -88,7 +88,7 @@ def output_model(df_merge, metric, feature1, feature2,
         'total_quantity': 'sum',
         'total_order': 'sum',
         'total_detailview': 'sum',
-        'atc_session':'sum',
+        'atc':'sum',
         'order_percent_of_total':'sum',
         'country_total_cost':'sum'
         }).reset_index()
@@ -101,7 +101,7 @@ def output_model(df_merge, metric, feature1, feature2,
         'total_quantity': 'sum',
         'total_order': 'sum',
         'total_detailview': 'sum',
-        'atc_session':'sum',
+        'atc':'sum',
         'order_percent_of_category':'sum',
         'country_total_cost':'sum'
         }).reset_index()
@@ -155,18 +155,18 @@ def output_model(df_merge, metric, feature1, feature2,
     # Format the output
     if feature == 'market_sku':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'sku_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc_session','country_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_name','sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc','country_total_cost_per_sku',
                         'rev_per_dv', 'CR','order_percent'])
     elif feature == 'market_spu':
         ranked_output = pd.merge(ranked_output, sku_info[[feature, 'spu_name']], on=feature, how='left')
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price','total_order', 'total_detailview', 'atc_session','country_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'spu_name', 'sku_count', 'category', 'total_revenue', 'total_quantity', 'average_price','total_order', 'total_detailview', 'atc','country_total_cost_per_sku',
                         'rev_per_dv', 'CR', 'order_percent'])
     elif feature == 'category':
         ranked_output = ranked_output.loc[:, ~ranked_output.columns.duplicated(keep='first')]
-        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc_session','country_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', 'category', 'sku_count', 'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc','country_total_cost_per_sku',
                         'rev_per_dv', 'CR', 'order_percent'])
     else:
-        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc_session', 'country_total_cost_per_sku',
+        ranked_output = ranked_output.reindex(columns=['cate-feature', feature, 'sku_count', 'category',  'total_revenue', 'total_quantity', 'average_price', 'total_order', 'total_detailview', 'atc', 'country_total_cost_per_sku',
                         'rev_per_dv', 'CR', 'order_percent'])
 
     return ranked_output

@@ -2,7 +2,7 @@ import pandas as pd
 
 def number_format(df,col_name):
     # in format 1,000
-    if col_name in ['sku_count','total_quantity','total_order','total_detailview','atc_session']:
+    if col_name in ['sku_count','total_quantity','total_order','total_detailview','atc']:
         return df[col_name].map('{:,.0f}'.format)
     # in format $1,000.00
     elif col_name in ['total_revenue','average_price_analysed','average_price','country_total_cost_per_sku']:
@@ -33,10 +33,10 @@ def rename_column(df):
         'total_revenue': 'Revenue_Analysed',
         'total_quantity': 'Quantity_Analysed',
         'average_price_analysed': 'Ave. Price_Analysed',
-        'average_price':'average_price',
+        'average_price':'Ave. Price',
         'total_order': 'Order_Analysed',
         'total_detailview': 'Detailview_Analysed',
-        'atc_session':'ATC Session',
+        'atc':'ATC_Analysed',
         'country_total_cost_per_sku': 'Country Average Cost per SKU',
         'rev_per_dv_analysed': 'Rev/DV_Analysed',
         'rev_per_dv_baseline': 'Rev/DV_Baseline',

@@ -248,6 +248,7 @@ def main():
                          AND frpdom.date BETWEEN %s AND %s
                          and ds.category != 'Swatch'
                          and ds.category IS NOT NULL
+                         and frpdom.region != 'Overseas'
                       GROUP BY 1, 2, 3, 4,5,6,7,8,9,10,11,12,13
                       """
            
