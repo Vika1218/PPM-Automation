@@ -553,7 +553,7 @@ def main():
                                file_name=f"{region_analysed} vs. {region_baseline}_{feature}_Rev per DV_{start_date} to {end_date}.csv",
                                help = '''Press button to download output as csv file''',
                                key="download_data")
-        
+       
        elif metric_analysed == 'CR':
             
             # Call comparison model & ANOVA
